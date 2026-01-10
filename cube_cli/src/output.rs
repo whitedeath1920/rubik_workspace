@@ -1,6 +1,5 @@
 use clap::{ValueEnum, Args};
 use std::{io, path::PathBuf};
-use serde_json;
 use anyhow::Result;
 
 pub trait PrettyPrint {
@@ -11,11 +10,15 @@ pub trait BinaryPrint {
     fn binary(&self) -> Vec<u8>;
 }
 
+pub trait VisualPrint {
+    fn visual(&self) -> String;
+}
+
 #[derive(Clone, Copy, Debug, ValueEnum)]
 pub enum OutputFormat {
     Pretty,
-    Json,
-    Binary
+    Binary,
+    Visual,
 }
 
 #[derive(Args, Clone, Debug)]
@@ -39,17 +42,17 @@ impl OutputArgs {
 
     pub fn writer_output<T>(&self, value: &T) -> Result<()> 
     where 
-        T: serde::Serialize + PrettyPrint + BinaryPrint,
+        T: PrettyPrint + BinaryPrint + VisualPrint,
     {
         let mut w = self.writer()?;
         match self.format {
-            OutputFormat::Pretty => {write!(w,"{}", value.pretty())?}
-            OutputFormat::Json => {
-                serde_json::to_writer(&mut w, value)?;
-            }
+            OutputFormat::Pretty => {write!(w,"{}", value.pretty())?},
             OutputFormat::Binary => {
                 w.write_all(&value.binary())?;
-            }
+            },
+            OutputFormat::Visual => {
+                write!(w,"{}",value.visual())?;
+            },
         }
         
         Ok(())

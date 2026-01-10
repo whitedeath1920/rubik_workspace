@@ -1,6 +1,6 @@
 use crate::{
     error::{CubeError, Result},
-    ops::{mcm, Bit},
+    ops::{Bit, mcm},
 };
 
 /// Number of pieces per kind.
@@ -21,6 +21,7 @@ pub const KIND: [&str; 7] = [
     "Par Centers",
     "Edge Centers",
 ];
+/// This takes in consideration that some pieces of the same color doesn't care of permutation
 pub const IDENTITY_ORD: [u128; 7] = [
     247132686368,
     42535295865117307933329727397822564384,
@@ -30,6 +31,7 @@ pub const IDENTITY_ORD: [u128; 7] = [
     212890870896917919348780648889093980160,
     255426166762035227281702474818065006592,
 ];
+/// This takes in consideration all permutations
 pub const IDENTITY_PERM: [u128; 7] = [
     247132686368,
     42535295865117307933329727397822564384,
@@ -60,8 +62,8 @@ impl CubeState {
             tmp1 * dim_mod_2,
             ((dimension - 2).pow(2) - dim_mod_2) / 4 - tmp1 * (dim_mod_2 + 1),
         ];
-        
-        let mut perm = vec![0;subgroups.iter().sum()];
+
+        let mut perm = vec![0; subgroups.iter().sum()];
 
         let mut cont = 0;
         for (i, &g) in subgroups.iter().enumerate() {
@@ -123,7 +125,10 @@ impl CubeState {
     pub fn get_perm_list(&self) -> Vec<Vec<Vec<usize>>> {
         self.perm.iter().map(|value| _get_perm(*value)).collect()
     }
-
+    
+    /// Checks if the state of the cube is valid
+    /// Errors \
+    /// When the cube state is not posible with the canonical moves
     pub fn check(&self) -> Result<()> {
         for i in 0..2 {
             if (0..NUM_PER_KIND[i]).map(|j| self.ori[i].get(j)).sum::<u8>() % (ORI_MOD[i] as u8)
@@ -137,9 +142,9 @@ impl CubeState {
         }
 
         let mut parity = false;
-        for a in self.get_perm_list().iter() {
+        for a in self.get_perm_list() {
             let mut odd = false;
-            for b in a.iter() {
+            for b in a {
                 if b.len() & 1 == 0 {
                     odd = !odd;
                 }

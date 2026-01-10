@@ -4,7 +4,7 @@ use clap::Args;
 
 use crate::{
     input::{BinaryRead, InputArgs},
-    output::{BinaryPrint, OutputArgs, PrettyPrint},
+    output::{BinaryPrint, OutputArgs, PrettyPrint, VisualPrint},
 };
 use cube_core::Layout;
 use serde::{Deserialize, Serialize};
@@ -152,5 +152,11 @@ impl Default for LayoutWrapper {
             subgroups_offset: layout.subgroups_offset(),
             groups_len: layout.groups_len(),
         }
+    }
+}
+
+impl VisualPrint for LayoutWrapper {
+    fn visual(&self) -> String {
+        self.pretty()
     }
 }
