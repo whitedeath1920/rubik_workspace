@@ -20,7 +20,7 @@ impl Turn {
     #[inline]
     pub fn amount(self) -> i8 {
         match self {
-            Turn::Anticlockwise => -1,
+            Turn::Anticlockwise => 3,
             Turn::Clockwise => 1,
             Turn::Double => 2,
         }
@@ -38,8 +38,8 @@ pub struct MoveRules {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Layers {
     Outer,
-    Slice { index: usize },
-    Wide { width: usize },
+    Slice { index: i32 },
+    Wide { width: i32 },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -75,7 +75,7 @@ pub enum MoveKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Move {
     pub kind: MoveKind,
-    pub amount: i8, // -1, +1, +2
+    pub amount: i8, // 3, +1, +2
 }
 
 impl Move {
@@ -181,7 +181,7 @@ impl CubeMoves {
                         let mv = Move {
                             kind: MoveKind::FaceTurn {
                                 face,
-                                layers: Layers::Slice { index },
+                                layers: Layers::Slice { index: index as i32 },
                             },
                             amount,
                         };
@@ -200,7 +200,7 @@ impl CubeMoves {
                         let mv = Move {
                             kind: MoveKind::FaceTurn {
                                 face,
-                                layers: Layers::Wide { width },
+                                layers: Layers::Wide { width: width as i32 },
                             },
                             amount,
                         };

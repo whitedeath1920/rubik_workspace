@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = [ "cube_core", "cube_cli" ]
+members = [ "cube_core", "cube_cli", "cube_methods" ]
 
 [profile.release]
 opt-level = 3

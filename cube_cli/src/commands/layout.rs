@@ -7,11 +7,10 @@ use crate::{
     output::{BinaryPrint, OutputArgs, PrettyPrint, VisualPrint},
 };
 use cube_core::Layout;
-use serde::{Deserialize, Serialize};
 use std::io::{Cursor, Read};
 
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 struct LayoutWrapper {
     dimension: usize,
     par: bool,

@@ -65,7 +65,7 @@ impl CubeVect {
             ori: [tmp1, tmp2],
         }
     }
-    fn _mv(&mut self, mv: usize, layer: usize) {
+    fn _mv(&mut self, mv: usize, layer: i32) {
         let matrix = [
             [[0, 0, -1], [0, 1, 0], [1, 0, 0]],
             [[0, 1, 0], [-1, 0, 0], [0, 0, 1]],
@@ -78,7 +78,7 @@ impl CubeVect {
             let tmp = self.perm[kind].0[piece];
             let tmp1 = if kind == 0 {
                 self.ori[kind][piece]
-            } else if self.dimension &1 == 1 && kind == 1{
+            } else if self.dimension & 1 == 1 && kind == 1 {
                 self.ori[kind][piece]
             } else {
                 [0; 3]
@@ -89,15 +89,15 @@ impl CubeVect {
                     tmp[0] * values[0] + tmp[1] * values[1] + tmp[2] * values[2];
                 tmp3[i] = tmp1[0] * values[0] + tmp1[1] * values[1] + tmp1[2] * values[2];
             }
-            if kind == 0 ||(kind == 1 && self.dimension & 1 == 1) {
+            if kind == 0 || (kind == 1 && self.dimension & 1 == 1) {
                 self.ori[kind][piece] = tmp3;
             }
         }
     }
-    fn _slice(&self, axis: usize, layer: usize) -> Vec<(usize, usize)> {
+    fn _slice(&self, axis: usize, layer: i32) -> Vec<(usize, usize)> {
         let mut slice = Vec::new();
         let cara = [(1, 1), (1, 2), (1, 0), (-1, 1), (-1, 2), (-1, 0)];
-        let mut altura = (self.dimension >> 1) as i32 - layer as i32;
+        let mut altura = (self.dimension >> 1) as i32 - layer;
         if altura <= 0 && self.dimension & 1 == 1 {
             altura -= 1;
         }
@@ -122,7 +122,12 @@ impl CubeVect {
                 };
                 (face as usize, mv.amount, start, finish)
             }
-            MoveKind::Rotation { axis } => (axis as usize, mv.amount, 0, self.dimension - (self.dimension & 1)),
+            MoveKind::Rotation { axis } => (
+                axis as usize,
+                mv.amount,
+                0,
+                (self.dimension - (self.dimension & 1)) as i32,
+            ),
         };
         for _ in 0..(amount + 4) % 4 {
             for layer in start..=finish {
