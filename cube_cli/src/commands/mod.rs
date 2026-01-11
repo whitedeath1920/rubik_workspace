@@ -1,2 +1,2 @@
-pub mod cube_state;
+pub mod cube_perm;
 pub mod layout;

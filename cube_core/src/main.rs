@@ -1,5 +1,5 @@
 use cube_core::{
-    cube_moves::{MoveClass, MoveRules, Turn}, cube_state::_to_vec, CubeMoves, CubeState
+    cube_moves::{MoveClass, MoveRules, Turn}, cube_perm::cube_perm::_to_vec, CubeMoves, CubePerm
 };
 
 fn main() {
@@ -9,7 +9,7 @@ fn main() {
         turns: vec![Turn::Clockwise, Turn::Double, Turn::Anticlockwise],
     };
     let moveset = CubeMoves::new(dimension, &rule);
-    let mut cube = CubeState::new(dimension);
+    let mut cube = CubePerm::new(dimension);
     
     println!("cube:\nori: {:?} \t perm: {:?}\n", _to_vec(cube.ori[0]),_to_vec(cube.perm[0]));
     let alg = "R F2 R F R U F2 R U";

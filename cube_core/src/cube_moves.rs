@@ -1,6 +1,6 @@
 use std::{collections::HashMap, ops::AddAssign};
 
-use crate::{error::Result, CubeError, CubeState, CubeVect};
+use crate::{error::Result, CubeError, CubePerm, CubeVect};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum MoveClass {
@@ -128,7 +128,7 @@ impl Move {
 }
 #[derive(Debug, Clone)]
 pub struct CubeMoves {
-    pub moves: HashMap<Move, CubeState>,
+    pub moves: HashMap<Move, CubePerm>,
     pub moves_s: HashMap<String, Move>
 }
 
@@ -166,7 +166,7 @@ impl CubeMoves {
                         amount,
                     };
                     let v = cube.mv(mv);
-                    let v: CubeState = v.into();
+                    let v: CubePerm = v.into();
 
                     moves.insert(mv, v.clone());
                     moves_s.insert(mv.to_string(), mv);
@@ -214,11 +214,11 @@ impl CubeMoves {
         Self { moves , moves_s }
     }
 
-    pub fn make_move_s(&self, mv: &str, cube: &mut CubeState) {
+    pub fn make_move_s(&self, mv: &str, cube: &mut CubePerm) {
         cube.add_assign(&self.moves[&self.moves_s[mv]]);
     }
     
-    pub fn try_make_move_s(&self, mv: &str, cube: &mut CubeState) -> Result<()> {
+    pub fn try_make_move_s(&self, mv: &str, cube: &mut CubePerm) -> Result<()> {
         if self.moves_s.contains_key(mv) {
             cube.add_assign(&self.moves[&self.moves_s[mv]]);
             return Ok(());
@@ -230,11 +230,11 @@ impl CubeMoves {
         }
     }
     
-    pub fn make_move_m(&self, mv: &Move, cube: &mut CubeState) {
+    pub fn make_move_m(&self, mv: &Move, cube: &mut CubePerm) {
         cube.add_assign(&self.moves[mv]);
     }
 
-    pub fn try_make_move_m(&self, mv: &Move, cube: &mut CubeState) -> Result<()> {
+    pub fn try_make_move_m(&self, mv: &Move, cube: &mut CubePerm) -> Result<()> {
         if self.moves.contains_key(mv) {
             cube.add_assign(&self.moves[mv]);
         } else {

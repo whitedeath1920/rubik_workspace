@@ -1,7 +1,7 @@
 use crate::{
-    CubeState,
+    CubePerm,
     cube_moves::{Layers, Move, MoveKind},
-    ops::Bit,
+    cube_perm::ops::Bit,
 };
 
 pub const MAP_PERM_VECT: [fn(usize, usize) -> Vec<[i32; 3]>; 7] =
@@ -138,8 +138,8 @@ impl CubeVect {
     }
 }
 
-impl Into<CubeState> for CubeVect {
-    fn into(self) -> CubeState {
+impl Into<CubePerm> for CubeVect {
+    fn into(self) -> CubePerm {
         let mut perm = vec![0; self.perm.len()];
         let mut ori = [0, 1 << 29];
         for (i, (v, kind)) in self.perm.iter().enumerate() {
@@ -210,7 +210,7 @@ impl Into<CubeState> for CubeVect {
                 cont += 1;
             }
         }
-        CubeState { perm, ori }
+        CubePerm { perm, ori }
     }
 }
 fn _get_len_from_dim(dimension: usize) -> usize {

@@ -77,7 +77,7 @@ impl PrettyPrint for LayoutWrapper {
         s = s + &format!("\tparity:\t\t{}\n", self.par);
         s = s + &format!("\tsubgroups:\n");
         for i in 0..7 {
-            s = s + &format!("\t\t{}:\t{}\n", cube_core::cube_state::KIND[i], self.subgroups[i]);
+            s = s + &format!("\t\t{}:\t{}\n", cube_core::cube_perm::cube_perm::KIND[i], self.subgroups[i]);
         }
 
         s

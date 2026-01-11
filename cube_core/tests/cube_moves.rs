@@ -1,5 +1,5 @@
 use cube_core::{
-    CubeMoves, CubeState,
+    CubeMoves, CubePerm,
     cube_moves::{MoveClass, MoveRules, Turn},
 };
 #[test]
@@ -190,7 +190,7 @@ fn test_move_s() {
         turns: vec![Turn::Clockwise, Turn::Anticlockwise, Turn::Double],
     };
     let moveset = CubeMoves::new(dimension, &rule);
-    let mut cube = CubeState::new(dimension);
+    let mut cube = CubePerm::new(dimension);
     moveset.make_move_s("R", &mut cube);
     let perm = vec![
         vec![0, 1, 3, 7, 4, 5, 2, 6, 0],
@@ -201,7 +201,7 @@ fn test_move_s() {
         vec![0, 0, 1, 2, 0, 0, 2, 1, 0],
         vec![0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1],
     ];
-    let cube1 = CubeState::from_vec((perm, ori));
+    let cube1 = CubePerm::from_vec((perm, ori));
 
     assert_eq!(cube, cube1);
 }
