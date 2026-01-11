@@ -160,6 +160,8 @@ pub trait Bit {
     fn get(&self, i: usize) -> u8;
     fn get_kind(&self) -> usize;
     fn set_kind(&mut self, kind: usize);
+    fn to_vec(&self) -> Vec<u8>;
+    fn from_vec(vect: &[u8]) -> Self;
 }
 
 macro_rules! bit_impl {
@@ -182,6 +184,23 @@ macro_rules! bit_impl {
             #[inline]
             fn set_kind(&mut self, kind: usize) {
                 *self = (*self & !(7 << $payload)) | (kind as $T) << $payload;
+            }
+            #[inline]
+            fn to_vec(&self) -> Vec<u8> {
+                let mut vect: Vec<u8> = (0..crate::cube_perm::cube_perm::NUM_PER_KIND[self.get_kind()])
+                    .map(|i| self.get(i))
+                    .collect();
+                vect.push(self.get_kind() as u8);
+                vect
+            }
+            #[inline]
+            fn from_vec(vect: &[u8]) -> $T {
+                let kind = vect[vect.len() - 1] as usize;
+                let mut a=  <$T>::default();
+                a.set_kind(kind);
+                (0..crate::cube_perm::cube_perm::NUM_PER_KIND[a.get_kind()])
+                    .for_each(|i| a.set(i, vect[i]));
+                a
             }
         }
     };

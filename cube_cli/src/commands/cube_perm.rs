@@ -1,6 +1,6 @@
 use anyhow::Result;
 use cube_core::{
-    cube_moves::{MoveClass, MoveRules, Turn}, cube_perm::{cube_perm::{_to_vec, KIND}, ops::Bit}, CubeMoves, CubePerm
+    cube_moves::{MoveClass, MoveRules, Turn}, cube_perm::{cube_perm::KIND, ops::Bit}, CubeMoves, CubePerm
 };
 use std::io::{Cursor, Read};
 
@@ -112,7 +112,7 @@ impl PrettyPrint for CubePermWrapper {
                 "\t\t{} {}: \t{:?}\n",
                 KIND[kind],
                 cont,
-                _to_vec(*a)
+                a.to_vec()
             );
 
             cont += 1;
@@ -122,7 +122,7 @@ impl PrettyPrint for CubePermWrapper {
             "\tori subgroups:\n\t\t{} {}: \t{:?}\n",
             KIND[0],
             1,
-            _to_vec(self.cube.ori[0])
+            self.cube.ori[0].to_vec()
         );
 
         if self.dimension & 1 == 1 {
@@ -130,7 +130,7 @@ impl PrettyPrint for CubePermWrapper {
                 "\t\t{} {}: \t{:?}\n",
                 KIND[1],
                 1,
-                _to_vec(self.cube.ori[1])
+                self.cube.ori[1].to_vec()
             );
         }
         s

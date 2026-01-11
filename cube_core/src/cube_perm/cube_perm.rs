@@ -90,16 +90,16 @@ impl CubePerm {
     #[inline]
     pub fn to_vec(&self) -> (Vec<Vec<u8>>, Vec<Vec<u8>>) {
         (
-            self.perm.iter().map(|val| _to_vec(*val)).collect(),
-            self.ori.iter().map(|val| _to_vec(*val)).collect(),
+            self.perm.iter().map(|val| val.to_vec()).collect(),
+            self.ori.iter().map(|val| val.to_vec()).collect(),
         )
     }
 
     #[inline]
     pub fn from_vec(vect: (Vec<Vec<u8>>, Vec<Vec<u8>>)) -> Self {
-        let ori: Vec<u32> = vect.1.into_iter().map(|v| _from_vec(&v)).collect();
+        let ori: Vec<u32> = vect.1.into_iter().map(|v| u32::from_vec(&v)).collect();
         Self {
-            perm: vect.0.into_iter().map(|v| _from_vec(&v)).collect(),
+            perm: vect.0.into_iter().map(|v| u128::from_vec(&v)).collect(),
             ori: [ori[0], ori[1]],
         }
     }
@@ -134,7 +134,7 @@ impl CubePerm {
                 != 0
             {
                 return Err(CubeError::InvalidOrientation {
-                    got: _to_vec(self.ori[i]),
+                    got: self.ori[i].to_vec(),
                     mod_: ORI_MOD[i],
                 });
             }
@@ -182,29 +182,7 @@ pub fn _new_subgroup(kind: usize) -> u128 {
     }
     tmp
 }
-#[inline]
-pub fn _to_vec<T>(val: T) -> Vec<u8>
-where
-    T: Bit,
-{
-    let mut vect: Vec<u8> = (0..NUM_PER_KIND[val.get_kind()])
-        .map(|i| val.get(i))
-        .collect();
-    vect.push(val.get_kind() as u8);
-    vect
-}
 
-#[inline]
-pub fn _from_vec<T>(vect: &Vec<u8>) -> T
-where
-    T: Bit + Default,
-{
-    let kind = vect[vect.len() - 1] as usize;
-    let mut a: T = T::default();
-    a.set_kind(kind);
-    (0..NUM_PER_KIND[kind]).for_each(|i| a.set(i, vect[i]));
-    a
-}
 #[inline]
 pub fn _get_perm(value: u128) -> Vec<Vec<usize>> {
     let mut seen = [false; 24];
