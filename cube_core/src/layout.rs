@@ -7,9 +7,9 @@ use crate::error::{CubeError, Result};
 pub struct Layout {
     dimension: usize,
     par: bool,
-    subgroups: [usize; 7],
-    subgroups_offset: [usize; 7],
-    groups_len: usize,
+    orbits: [usize; 7],
+    orbits_offset: [usize; 7],
+    orbits_len: usize,
 }
 
 impl Layout {
@@ -19,7 +19,7 @@ impl Layout {
 
         let dim_mod_2 = dimension % 2;
         let tmp1 = (dimension - 2 - dim_mod_2) / 2;
-        let subgroups = [
+        let orbits = [
             1,
             dim_mod_2,
             dim_mod_2,
@@ -29,19 +29,19 @@ impl Layout {
             ((dimension - 2).pow(2) - dim_mod_2) / 4 - tmp1 * (dim_mod_2 + 1),
         ];
 
-        let mut subgroups_offset = [0; 7];
-        let mut groups_len = 1;
+        let mut orbits_offset = [0; 7];
+        let mut orbits_len = 1;
         for i in 1..7 {
-            subgroups_offset[i] += subgroups[i - 1];
-            groups_len += subgroups[i];
+            orbits_offset[i] += orbits[i - 1];
+            orbits_len += orbits[i];
         }
 
         Layout {
             dimension,
             par,
-            subgroups,
-            subgroups_offset,
-            groups_len,
+            orbits,
+            orbits_offset,
+            orbits_len,
         }
     }
 
@@ -73,31 +73,31 @@ impl Layout {
 
     /// Returns the total number of pieces in the cube
     #[inline]
-    pub fn subgroups(&self) -> [usize; 7] {
-        self.subgroups
+    pub fn orbits(&self) -> [usize; 7] {
+        self.orbits
     }
 
-    /// Returns the subgroup for the given kind
+    /// Returns the orbit for the given kind
     #[inline]
-    pub fn subgroup(&self, kind: usize) -> usize {
-        self.subgroups[kind]
+    pub fn orbit(&self, kind: usize) -> usize {
+        self.orbits[kind]
     }
 
-    /// Returns de offset of the subgroup
+    /// Returns de offset of the orbit
     #[inline]
-    pub fn subgroup_offset(&self, kind: usize) -> usize {
-        self.subgroups_offset[kind]
+    pub fn orbit_offset(&self, kind: usize) -> usize {
+        self.orbits_offset[kind]
     }
 
-    /// Returns the offset of the subgroups
+    /// Returns the offset of the orbits
     #[inline]
-    pub fn subgroups_offset(&self) -> [usize; 7] {
-        self.subgroups_offset
+    pub fn orbits_offset(&self) -> [usize; 7] {
+        self.orbits_offset
     }
 
-    /// Returns the total groups length
+    /// Returns the total orbits length
     #[inline]
-    pub fn groups_len(&self) -> usize {
-        self.groups_len
+    pub fn orbits_len(&self) -> usize {
+        self.orbits_len
     }
 }

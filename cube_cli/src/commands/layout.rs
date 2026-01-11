@@ -6,7 +6,7 @@ use crate::{
     input::{BinaryRead, InputArgs},
     output::{BinaryPrint, OutputArgs, PrettyPrint, VisualPrint},
 };
-use cube_core::Layout;
+use cube_core::{Layout, KIND};
 use std::io::{Cursor, Read};
 
 
@@ -14,9 +14,9 @@ use std::io::{Cursor, Read};
 struct LayoutWrapper {
     dimension: usize,
     par: bool,
-    subgroups: [usize; 7],
-    subgroups_offset: [usize; 7],
-    groups_len: usize,
+    orbits: [usize; 7],
+    orbits_offset: [usize; 7],
+    orbits_len: usize,
 }
 
 impl LayoutWrapper {
@@ -26,9 +26,9 @@ impl LayoutWrapper {
         Ok(LayoutWrapper {
             dimension: l.dimension(),
             par: l.par(),
-            subgroups: l.subgroups(),
-            subgroups_offset: l.subgroups_offset(),
-            groups_len: l.groups_len(),
+            orbits: l.orbits(),
+            orbits_offset: l.orbits_offset(),
+            orbits_len: l.orbits_len(),
         })
     }
 }
@@ -75,9 +75,9 @@ impl PrettyPrint for LayoutWrapper {
             s = s + &format!("\ttotal pieces:\tto large to print\n");
         }
         s = s + &format!("\tparity:\t\t{}\n", self.par);
-        s = s + &format!("\tsubgroups:\n");
+        s = s + &format!("\torbits:\n");
         for i in 0..7 {
-            s = s + &format!("\t\t{}:\t{}\n", cube_core::cube_perm::cube_perm::KIND[i], self.subgroups[i]);
+            s = s + &format!("\t\t{}:\t{}\n", KIND[i], self.orbits[i]);
         }
 
         s
@@ -90,17 +90,17 @@ impl BinaryPrint for LayoutWrapper {
         buffer.extend_from_slice(b"LAYOUT");
         buffer.extend_from_slice(&self.dimension.to_le_bytes());
         buffer.extend_from_slice(if self.par { &[1] } else { &[0] });
-        let tmp = self.subgroups.iter().map(|x| x.to_le_bytes()).flatten();
+        let tmp = self.orbits.iter().map(|x| x.to_le_bytes()).flatten();
         let tmp = tmp.collect::<Vec<_>>();
         buffer.extend(tmp);
         let tmp = self
-            .subgroups_offset
+            .orbits_offset
             .iter()
             .map(|x| x.to_le_bytes())
             .flatten();
         let tmp = tmp.collect::<Vec<_>>();
         buffer.extend(tmp);
-        buffer.extend_from_slice(&self.groups_len.to_le_bytes());
+        buffer.extend_from_slice(&self.orbits_len.to_le_bytes());
         buffer
     }
 }
@@ -125,18 +125,18 @@ impl BinaryRead for LayoutWrapper {
         let mut tmp = [0u8; 8];
         for i in 0..7 {
             cursor.read_exact(&mut tmp)?;
-            self.subgroups[i] = usize::from_le_bytes(tmp);
+            self.orbits[i] = usize::from_le_bytes(tmp);
         }
 
         let mut tmp = [0u8; 8];
         for i in 0..7 {
             cursor.read_exact(&mut tmp)?;
-            self.subgroups_offset[i] = usize::from_le_bytes(tmp);
+            self.orbits_offset[i] = usize::from_le_bytes(tmp);
         }
 
         let mut tmp = [0u8; (usize::BITS / 8) as usize];
         cursor.read_exact(&mut tmp)?;
-        self.groups_len = usize::from_le_bytes(tmp);
+        self.orbits_len = usize::from_le_bytes(tmp);
         Ok(())
     }
 }
@@ -147,9 +147,9 @@ impl Default for LayoutWrapper {
         Self {
             dimension: layout.dimension(),
             par: layout.par(),
-            subgroups: layout.subgroups(),
-            subgroups_offset: layout.subgroups_offset(),
-            groups_len: layout.groups_len(),
+            orbits: layout.orbits(),
+            orbits_offset: layout.orbits_offset(),
+            orbits_len: layout.orbits_len(),
         }
     }
 }

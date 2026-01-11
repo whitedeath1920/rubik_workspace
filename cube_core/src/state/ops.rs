@@ -1,8 +1,7 @@
 use std::ops::{Add, AddAssign, Mul, Neg, Sub, SubAssign};
 
 use crate::{
-    CubePerm,
-    cube_perm::cube_perm::{IDENTITY_ORD, NUM_PER_KIND, ORI_MOD},
+    state::{CubeState, IDENTITY_ORD, NUM_PER_KIND, ORI_MOD},
 };
 
 macro_rules! oper_impl {
@@ -33,29 +32,29 @@ macro_rules! oper_impl {
     };
 }
 oper_impl!(
-    Sub<&CubePerm>,
+    Sub<&CubeState>,
     sub,
-    SubAssign<&CubePerm>,
+    SubAssign<&CubeState>,
     sub_assign,
-    CubePerm,
-    &CubePerm,
+    CubeState,
+    &CubeState,
     sub_ori_mut,
     sub_perm_mut
 );
 oper_impl!(
-    Add<&CubePerm>,
+    Add<&CubeState>,
     add,
-    AddAssign<&CubePerm>,
+    AddAssign<&CubeState>,
     add_assign,
-    CubePerm,
-    &CubePerm,
+    CubeState,
+    &CubeState,
     add_ori_mut,
     add_perm_mut
 );
 macro_rules! neg_impl {
     ($($T:ty),*) => {$(
        impl Neg for $T {
-           type Output = CubePerm;
+           type Output = CubeState;
            #[inline]
            fn neg(self) -> Self::Output {
                self.identity() - &self
@@ -63,14 +62,14 @@ macro_rules! neg_impl {
        }
     )*};
 }
-neg_impl!(CubePerm, &CubePerm);
+neg_impl!(CubeState, &CubeState);
 
 macro_rules! mul_impl {
     (signed: $($T:ty),+$(,)?) => {$(
-        impl Mul<CubePerm> for $T {
-            type Output = CubePerm;
+        impl Mul<CubeState> for $T {
+            type Output = CubeState;
             #[inline]
-            fn mul(self, mut rhs: CubePerm) -> Self::Output {
+            fn mul(self, mut rhs: CubeState) -> Self::Output {
                 if self == 0 {
                     return rhs.identity();
                 } else if self < 0 {
@@ -81,10 +80,10 @@ macro_rules! mul_impl {
         }
     )+};
     (unsigned: $($T:ty),+$(,)?) => {$(
-        impl Mul<CubePerm> for $T {
-            type Output = CubePerm;
+        impl Mul<CubeState> for $T {
+            type Output = CubeState;
             #[inline]
-            fn mul(self, rhs: CubePerm) -> Self::Output {
+            fn mul(self, rhs: CubeState) -> Self::Output {
                 if self == 0 {
                     return rhs.identity();
                 }
@@ -94,7 +93,7 @@ macro_rules! mul_impl {
     )+};
 }
 #[inline]
-fn mul_by_u128(mut n: u128, mut base: CubePerm) -> CubePerm {
+fn mul_by_u128(mut n: u128, mut base: CubeState) -> CubeState {
     let mut acc = base.identity();
     while n != 0 {
         if (n & 1) == 1 {
@@ -187,7 +186,7 @@ macro_rules! bit_impl {
             }
             #[inline]
             fn to_vec(&self) -> Vec<u8> {
-                let mut vect: Vec<u8> = (0..crate::cube_perm::cube_perm::NUM_PER_KIND[self.get_kind()])
+                let mut vect: Vec<u8> = (0..crate::state::state::NUM_PER_KIND[self.get_kind()])
                     .map(|i| self.get(i))
                     .collect();
                 vect.push(self.get_kind() as u8);
@@ -198,7 +197,7 @@ macro_rules! bit_impl {
                 let kind = vect[vect.len() - 1] as usize;
                 let mut a=  <$T>::default();
                 a.set_kind(kind);
-                (0..crate::cube_perm::cube_perm::NUM_PER_KIND[a.get_kind()])
+                (0..crate::state::state::NUM_PER_KIND[a.get_kind()])
                     .for_each(|i| a.set(i, vect[i]));
                 a
             }
@@ -209,7 +208,7 @@ macro_rules! bit_impl {
 bit_impl!(u128, 5, 125);
 bit_impl!(u32, 2, 29);
 
-impl PartialEq for CubePerm {
+impl PartialEq for CubeState {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         if self.perm.len() != other.perm.len() {
@@ -219,7 +218,7 @@ impl PartialEq for CubePerm {
             return false;
         }
         for (a, b) in self.perm.iter().zip(&other.perm) {
-            if !eq_subgroup(a, b) {
+            if !eq_orbit(a, b) {
                 return false;
             }
         }
@@ -228,7 +227,7 @@ impl PartialEq for CubePerm {
 }
 
 #[inline]
-fn eq_subgroup(a: &u128, b: &u128) -> bool {
+fn eq_orbit(a: &u128, b: &u128) -> bool {
     let kind = a.get_kind();
     for i in 0..NUM_PER_KIND[a.get_kind()] {
         if IDENTITY_ORD[kind].get(a.get(i) as usize) != IDENTITY_ORD[kind].get(b.get(i) as usize) {
@@ -238,7 +237,7 @@ fn eq_subgroup(a: &u128, b: &u128) -> bool {
     true
 }
 
-impl Eq for CubePerm {}
+impl Eq for CubeState {}
 
 #[inline]
 pub fn gcd(mut u: usize, mut v: usize) -> usize {
@@ -278,7 +277,7 @@ pub fn mcm(u: usize, v: usize) -> usize {
     (u * v) / gcd(u, v)
 }
 
-#[inline]
-pub fn normalized_lcm(u: usize, v: usize) -> usize {
-    (u * v) / gcd(u, v).pow(2)
-}
+// #[inline]
+// pub fn normalized_lcm(u: usize, v: usize) -> usize {
+//     (u * v) / gcd(u, v).pow(2)
+// }

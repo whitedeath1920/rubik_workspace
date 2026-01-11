@@ -1,9 +1,9 @@
 use std::{collections::HashMap, ops::AddAssign};
 
-use crate::{error::Result, CubeError, CubePerm, CubeVect};
+use crate::{error::Result, CubeError, state::CubeState, moves::cube_vect::CubeVect};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum MoveClass {
+pub enum MoveFamily {
     Rotation,
     Outer,
     Slice,
@@ -18,7 +18,7 @@ pub enum Turn {
 }
 impl Turn {
     #[inline]
-    pub fn amount(self) -> i8 {
+    pub fn qturns(self) -> i8 {
         match self {
             Turn::Anticlockwise => 3,
             Turn::Clockwise => 1,
@@ -27,9 +27,9 @@ impl Turn {
     }
 }
 #[derive(Debug)]
-pub struct MoveRules {
+pub struct MoveSet {
     /// Rotation, TopLayer, MiddleLayer, MultipleLayer,
-    pub moves: Vec<MoveClass>,
+    pub moves: Vec<MoveFamily>,
 
     /// Anticlowise, Clockwise, Double
     pub turns: Vec<Turn>,
@@ -75,12 +75,12 @@ pub enum MoveKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Move {
     pub kind: MoveKind,
-    pub amount: i8, // 3, +1, +2
+    pub qturns: i8, // 3, +1, +2
 }
 
 impl Move {
     pub fn to_string(&self) -> String {
-        let amount = (self.amount + 4) % 4;
+        let qturns = (self.qturns + 4) % 4;
         let mut s = String::new();
         match self.kind {
             MoveKind::FaceTurn { face, layers } => {
@@ -115,11 +115,11 @@ impl Move {
                 };
             }
         };
-        if amount == 0 {
+        if qturns == 0 {
             return "".to_string();
-        } else if amount == 2 {
+        } else if qturns == 2 {
             s += "2";
-        } else if amount == 3 {
+        } else if qturns == 3 {
             s += "'";
         }
         
@@ -127,26 +127,26 @@ impl Move {
     }
 }
 #[derive(Debug, Clone)]
-pub struct CubeMoves {
-    pub moves: HashMap<Move, CubePerm>,
+pub struct MoveTable {
+    pub moves: HashMap<Move, CubeState>,
     pub moves_s: HashMap<String, Move>
 }
 
-impl CubeMoves {
-    pub fn new(dimension: usize, rule: &MoveRules) -> Self {
+impl MoveTable {
+    pub fn new(dimension: usize, rule: &MoveSet) -> Self {
         let mut moves = HashMap::new();
         let mut moves_s = HashMap::new();
         let cube = CubeVect::new(dimension);
         
-        let turns: Vec<i8> = rule.turns.iter().map(|t| t.amount()).collect();
+        let turns: Vec<i8> = rule.turns.iter().map(|t| t.qturns()).collect();
 
-        if rule.moves.contains(&MoveClass::Rotation) {
+        if rule.moves.contains(&MoveFamily::Rotation) {
             let axes = [Axis::X, Axis::Y, Axis::Z];
             for axis in axes {
-                for &amount in &turns {
+                for &qturns in &turns {
                     let mv = Move {
                         kind: MoveKind::Rotation { axis },
-                        amount,
+                        qturns,
                     };
                     let v = cube.mv(mv);
                     moves.insert(mv, v.into());
@@ -154,36 +154,36 @@ impl CubeMoves {
                 }
             }
         }
-        if rule.moves.contains(&MoveClass::Outer) {
+        if rule.moves.contains(&MoveFamily::Outer) {
             let faces = [Faces::U, Faces::F, Faces::R, Faces::D, Faces::B, Faces::L];
             for face in faces {
-                for &amount in &turns {
+                for &qturns in &turns {
                     let mv = Move {
                         kind: MoveKind::FaceTurn {
                             face,
                             layers: Layers::Outer,
                         },
-                        amount,
+                        qturns,
                     };
                     let v = cube.mv(mv);
-                    let v: CubePerm = v.into();
+                    let v: CubeState = v.into();
 
                     moves.insert(mv, v.clone());
                     moves_s.insert(mv.to_string(), mv);
                 }
             }
         }
-        if rule.moves.contains(&MoveClass::Slice) {
+        if rule.moves.contains(&MoveFamily::Slice) {
             let faces = [Faces::U, Faces::F, Faces::R, Faces::D, Faces::B, Faces::L];
             for face in faces {
                 for index in 2..=(dimension >> 1) {
-                    for &amount in &turns {
+                    for &qturns in &turns {
                         let mv = Move {
                             kind: MoveKind::FaceTurn {
                                 face,
                                 layers: Layers::Slice { index: index as i32 },
                             },
-                            amount,
+                            qturns,
                         };
                         let v = cube.mv(mv);
                         moves.insert(mv, v.into());
@@ -192,17 +192,17 @@ impl CubeMoves {
                 }
             }
         }
-        if rule.moves.contains(&MoveClass::Wide) {
+        if rule.moves.contains(&MoveFamily::Wide) {
             let faces = [Faces::U, Faces::F, Faces::R, Faces::D, Faces::B, Faces::L];
             for face in faces {
                 for width in 2..=(dimension >> 1) {
-                    for &amount in &turns {
+                    for &qturns in &turns {
                         let mv = Move {
                             kind: MoveKind::FaceTurn {
                                 face,
                                 layers: Layers::Wide { width: width as i32 },
                             },
-                            amount,
+                            qturns,
                         };
                         let v = cube.mv(mv);
                         moves.insert(mv, v.into());
@@ -214,11 +214,11 @@ impl CubeMoves {
         Self { moves , moves_s }
     }
 
-    pub fn make_move_s(&self, mv: &str, cube: &mut CubePerm) {
+    pub fn make_move_s(&self, mv: &str, cube: &mut CubeState) {
         cube.add_assign(&self.moves[&self.moves_s[mv]]);
     }
     
-    pub fn try_make_move_s(&self, mv: &str, cube: &mut CubePerm) -> Result<()> {
+    pub fn try_make_move_s(&self, mv: &str, cube: &mut CubeState) -> Result<()> {
         if self.moves_s.contains_key(mv) {
             cube.add_assign(&self.moves[&self.moves_s[mv]]);
             return Ok(());
@@ -230,11 +230,11 @@ impl CubeMoves {
         }
     }
     
-    pub fn make_move_m(&self, mv: &Move, cube: &mut CubePerm) {
+    pub fn make_move_m(&self, mv: &Move, cube: &mut CubeState) {
         cube.add_assign(&self.moves[mv]);
     }
 
-    pub fn try_make_move_m(&self, mv: &Move, cube: &mut CubePerm) -> Result<()> {
+    pub fn try_make_move_m(&self, mv: &Move, cube: &mut CubeState) -> Result<()> {
         if self.moves.contains_key(mv) {
             cube.add_assign(&self.moves[mv]);
         } else {

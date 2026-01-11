@@ -21,7 +21,7 @@ pub struct Cli {
 pub enum Commands {
     /// Creates a new layout for the cube
     Layout(commands::layout::LayoutCmd),
-    CubeState(commands::cube_perm::CubePermCmd),
+    CubeState(commands::cube_perm::CubeStateCmd),
 }
 
 fn main() -> anyhow::Result<()> {

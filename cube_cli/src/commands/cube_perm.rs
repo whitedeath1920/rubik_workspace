@@ -1,6 +1,6 @@
 use anyhow::Result;
 use cube_core::{
-    cube_moves::{MoveClass, MoveRules, Turn}, cube_perm::{cube_perm::KIND, ops::Bit}, CubeMoves, CubePerm
+    cube_moves::{CubeMoves, MoveClass, MoveRules, Turn}, Bit, CubeState, KIND
 };
 use std::io::{Cursor, Read};
 
@@ -21,15 +21,15 @@ use crate::{
 // const COLORS: [&str;7] = [W,G,R,Y,B,O,K];
 
 #[derive(Debug, Clone)]
-pub struct CubePermWrapper {
+pub struct CubeStateWrapper {
     dimension: usize,
-    cube: CubePerm,
+    cube: CubeState,
 }
 
-impl CubePermWrapper {
-    pub fn try_new(dimension: usize) -> Result<CubePermWrapper> {
-        let cube = CubePerm::try_new(dimension)?;
-        Ok(CubePermWrapper {
+impl CubeStateWrapper {
+    pub fn try_new(dimension: usize) -> Result<CubeStateWrapper> {
+        let cube = CubeState::try_new(dimension)?;
+        Ok(CubeStateWrapper {
             dimension,
             cube
         })
@@ -37,12 +37,12 @@ impl CubePermWrapper {
 }
 
 #[derive(Args)]
-pub struct CubePermCmd {
+pub struct CubeStateCmd {
     /// Specifies the dimension of the cube
     #[arg(short, long)]
     dimension: Option<usize>,
 
-    /// Sets a custom output for the CubePerm
+    /// Sets a custom output for the CubeState
     #[command(flatten)]
     out: OutputArgs,
 
@@ -50,19 +50,19 @@ pub struct CubePermCmd {
     #[command(flatten)]
     input: InputArgs,
 
-    /// Algorithm for moving the cube in "Big CubePerm" notation
+    /// Algorithm for moving the cube in "Big CubeState" notation
     #[arg(short, long)]
     moves: Option<String>,
 }
 
-impl CubePermCmd {
+impl CubeStateCmd {
     pub fn run(&self) -> anyhow::Result<()> {
         let mut cube;
         if let Some(dimension) = self.dimension {
-            cube = CubePermWrapper::try_new(dimension)?;
+            cube = CubeStateWrapper::try_new(dimension)?;
             self.out.writer_output(&cube)?;
         } else {
-            cube = self.input.read_input::<CubePermWrapper>()?;
+            cube = self.input.read_input::<CubeStateWrapper>()?;
             self.out.writer_output(&cube)?;
         }
         if self.moves.is_some() {
@@ -87,9 +87,9 @@ impl CubePermCmd {
         Ok(())
     }
 }
-impl PrettyPrint for CubePermWrapper {
+impl PrettyPrint for CubeStateWrapper {
     fn pretty(&self) -> String {
-        let mut s = "CubePerm state:\n".to_string();
+        let mut s = "CubeState state:\n".to_string();
         s = s + &format!("\tdimension:\t{}\n", self.dimension);
         if self.dimension < 2642246 {
             s = s + &format!(
@@ -100,7 +100,7 @@ impl PrettyPrint for CubePermWrapper {
             s = s + &format!("\ttotal pieces:\tto large to print\n");
         }
 
-        s = s + &format!("\tperm subgroups:\n");
+        s = s + &format!("\tperm orbits:\n");
         let mut kind = 0;
         let mut cont = 0;
         for a in self.cube.perm.iter() {
@@ -119,7 +119,7 @@ impl PrettyPrint for CubePermWrapper {
         }
 
         s = s + &format!(
-            "\tori subgroups:\n\t\t{} {}: \t{:?}\n",
+            "\tori orbits:\n\t\t{} {}: \t{:?}\n",
             KIND[0],
             1,
             self.cube.ori[0].to_vec()
@@ -136,7 +136,7 @@ impl PrettyPrint for CubePermWrapper {
         s
     }
 }
-impl BinaryPrint for CubePermWrapper {
+impl BinaryPrint for CubeStateWrapper {
     fn binary(&self) -> Vec<u8> {
         let mut buffer = Vec::new();
         buffer.extend_from_slice(b"STATE");
@@ -161,7 +161,7 @@ impl BinaryPrint for CubePermWrapper {
     }
 }
 
-impl BinaryRead for CubePermWrapper {
+impl BinaryRead for CubeStateWrapper {
     fn binary_r(&mut self, buffer: &[u8]) -> anyhow::Result<()> {
         let mut cursor = Cursor::new(buffer);
         let mut magic = [0u8; 5];
@@ -200,22 +200,22 @@ impl BinaryRead for CubePermWrapper {
     }
 }
 
-impl Default for CubePermWrapper {
+impl Default for CubeStateWrapper {
     fn default() -> Self {
         let dimension = 2;
-        let cube = CubePerm::new(dimension);
+        let cube = CubeState::new(dimension);
         Self {
             dimension,
             cube 
         }
     }
 }
-impl VisualPrint for CubePermWrapper {
+impl VisualPrint for CubeStateWrapper {
     fn visual(&self) -> String {
         self.pretty()
     }
 }
-// impl VisualPrint for CubePermWrapper {
+// impl VisualPrint for CubeStateWrapper {
 //     fn visual(&self) -> String {
 //         let altura = self.dimension as i32 >> 1;
 //         let mut lines: Vec<Vec<String>> = vec![

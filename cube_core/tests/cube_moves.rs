@@ -1,15 +1,15 @@
 use cube_core::{
-    CubeMoves, CubePerm,
-    cube_moves::{MoveClass, MoveRules, Turn},
+    state::CubeState,
+    moves::{MoveFamily, MoveSet, Turn, MoveTable},
 };
 #[test]
 fn test_rotation() {
     let dimension = 7;
-    let rule = MoveRules {
-        moves: vec![MoveClass::Rotation],
+    let rule = MoveSet {
+        moves: vec![MoveFamily::Rotation],
         turns: vec![Turn::Clockwise, Turn::Anticlockwise, Turn::Double],
     };
-    let moveset = CubeMoves::new(dimension, &rule);
+    let movetable = MoveTable::new(dimension, &rule);
 
     let l_moves = vec![
         "x".to_string(),
@@ -23,7 +23,7 @@ fn test_rotation() {
         "z2".to_string(),
     ];
 
-    let keys: Vec<&String> = moveset.moves_s.keys().collect();
+    let keys: Vec<&String> = movetable.moves_s.keys().collect();
     for mv in keys {
         if !l_moves.contains(&mv) {
             panic!("Move {} not found", mv);
@@ -33,11 +33,11 @@ fn test_rotation() {
 #[test]
 fn test_slice() {
     let dimension = 7;
-    let rule = MoveRules {
-        moves: vec![MoveClass::Slice],
-        turns: vec![Turn::Clockwise, Turn::Anticlockwise, Turn::Double],
+    let rule = MoveSet {
+        moves: vec![MoveFamily::Slice],
+        turns: vec![Turn::Clockwise, Turn::Anticlockwise, Turn::Double]
     };
-    let moveset = CubeMoves::new(dimension, &rule);
+    let movetable = MoveTable::new(dimension, &rule);
 
     let l_moves = vec![
         "2U".to_string(),
@@ -78,7 +78,7 @@ fn test_slice() {
         "3L2".to_string(),
     ];
 
-    let keys: Vec<&String> = moveset.moves_s.keys().collect();
+    let keys: Vec<&String> = movetable.moves_s.keys().collect();
     for mv in keys {
         if !l_moves.contains(&mv) {
             panic!("Move {} not found", mv);
@@ -88,11 +88,11 @@ fn test_slice() {
 #[test]
 fn test_wide() {
     let dimension = 7;
-    let rule = MoveRules {
-        moves: vec![MoveClass::Wide],
-        turns: vec![Turn::Clockwise, Turn::Anticlockwise, Turn::Double],
+    let rule = MoveSet {
+        moves: vec![MoveFamily::Wide],
+        turns: vec![Turn::Clockwise, Turn::Anticlockwise, Turn::Double]
     };
-    let moveset = CubeMoves::new(dimension, &rule);
+    let movetable = MoveTable::new(dimension, &rule);
 
     let l_moves = vec![
         "Uw".to_string(),
@@ -133,7 +133,7 @@ fn test_wide() {
         "3Lw2".to_string(),
     ];
 
-    let keys: Vec<&String> = moveset.moves_s.keys().collect();
+    let keys: Vec<&String> = movetable.moves_s.keys().collect();
     for mv in keys {
         if !l_moves.contains(&mv) {
             panic!("Move {} not found", mv);
@@ -143,11 +143,11 @@ fn test_wide() {
 #[test]
 fn test_outer() {
     let dimension = 7;
-    let rule = MoveRules {
-        moves: vec![MoveClass::Outer],
-        turns: vec![Turn::Clockwise, Turn::Anticlockwise, Turn::Double],
+    let rule = MoveSet {
+        moves: vec![MoveFamily::Outer],
+        turns: vec![Turn::Clockwise, Turn::Anticlockwise, Turn::Double]
     };
-    let moveset = CubeMoves::new(dimension, &rule);
+    let movetable = MoveTable::new(dimension, &rule);
 
     let l_moves = vec![
         "U".to_string(),
@@ -170,7 +170,7 @@ fn test_outer() {
         "L2".to_string(),
     ];
 
-    let keys: Vec<&String> = moveset.moves_s.keys().collect();
+    let keys: Vec<&String> = movetable.moves_s.keys().collect();
     for mv in keys {
         if !l_moves.contains(&mv) {
             panic!("Move {} not found", mv);
@@ -180,18 +180,18 @@ fn test_outer() {
 #[test]
 fn test_move_s() {
     let dimension = 3;
-    let rule = MoveRules {
+    let rule = MoveSet {
         moves: vec![
-            MoveClass::Outer,
-            MoveClass::Rotation,
-            MoveClass::Wide,
-            MoveClass::Slice,
+            MoveFamily::Outer,
+            MoveFamily::Rotation,
+            MoveFamily::Wide,
+            MoveFamily::Slice,
         ],
         turns: vec![Turn::Clockwise, Turn::Anticlockwise, Turn::Double],
     };
-    let moveset = CubeMoves::new(dimension, &rule);
-    let mut cube = CubePerm::new(dimension);
-    moveset.make_move_s("R", &mut cube);
+    let movetable = MoveTable::new(dimension, &rule);
+    let mut cube = CubeState::new(dimension);
+    movetable.make_move_s("R", &mut cube);
     let perm = vec![
         vec![0, 1, 3, 7, 4, 5, 2, 6, 0],
         vec![0, 1, 2, 7, 4, 5, 3, 11, 8, 9, 10, 6, 1],
@@ -201,7 +201,7 @@ fn test_move_s() {
         vec![0, 0, 1, 2, 0, 0, 2, 1, 0],
         vec![0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1],
     ];
-    let cube1 = CubePerm::from_vec((perm, ori));
+    let cube1 = CubeState::from_vec((perm, ori));
 
     assert_eq!(cube, cube1);
 }

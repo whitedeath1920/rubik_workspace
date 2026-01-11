@@ -1,12 +1,13 @@
 use cube_core::{
-    cube_moves::{Faces, Layers, Move, MoveKind}, cube_vect::get_dim_from_len, CubePerm, CubeVect
+    moves::{Faces, Layers, Move, MoveKind, get_dim_from_len, CubeVect},
+    state::CubeState
 };
 
 #[test]
 fn test_new() {
     let dimension = 34;
-    let cube: CubePerm = CubeVect::new(dimension).into();
-    let cube_perm = CubePerm::new(dimension);
+    let cube: CubeState = CubeVect::new(dimension).into();
+    let cube_perm = CubeState::new(dimension);
 
     assert_eq!(cube, cube_perm);
 }
@@ -30,11 +31,11 @@ fn test_move() {
             face: Faces::R,
             layers: Layers::Outer,
         },
-        amount: 1,
+        qturns: 1,
     };
 
     let cube_r = cube.mv(mv);
-    let cube_r: CubePerm = cube_r.into();
+    let cube_r: CubeState = cube_r.into();
     let perm = vec![
         vec![0, 1, 3, 7, 4, 5, 2, 6, 0],
         vec![0, 1, 2, 7, 4, 5, 3, 11, 8, 9, 10, 6, 1],
@@ -44,7 +45,7 @@ fn test_move() {
         vec![0, 0, 1, 2, 0, 0, 2, 1, 0],
         vec![0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1],
     ];
-    let cube1 = CubePerm::from_vec((perm, ori));
+    let cube1 = CubeState::from_vec((perm, ori));
 
     assert_eq!(cube_r, cube1);
 }

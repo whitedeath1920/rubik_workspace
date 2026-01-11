@@ -1,7 +1,6 @@
 use crate::{
-    CubePerm,
-    cube_moves::{Layers, Move, MoveKind},
-    cube_perm::ops::Bit,
+    moves::{Layers, Move, MoveKind},
+    state::{Bit, CubeState},
 };
 
 pub const MAP_PERM_VECT: [fn(usize, usize) -> Vec<[i32; 3]>; 7] =
@@ -9,7 +8,7 @@ pub const MAP_PERM_VECT: [fn(usize, usize) -> Vec<[i32; 3]>; 7] =
 
 #[derive(Debug, Clone)]
 pub struct CubeVect {
-    // Subgroups(piece(x,y,z),kind)
+    // orbits(piece(x,y,z),kind)
     pub perm: Vec<(Vec<[i32; 3]>, u8)>,
     pub dimension: usize,
     pub ori: [Vec<[i32; 3]>; 2],
@@ -19,7 +18,7 @@ impl CubeVect {
     pub fn new(dimension: usize) -> Self {
         let dim_mod_2 = dimension % 2;
         let tmp1 = (dimension - 2 - dim_mod_2) / 2;
-        let subgroups = [
+        let orbits = [
             1,
             dim_mod_2,
             dim_mod_2,
@@ -28,10 +27,10 @@ impl CubeVect {
             tmp1 * dim_mod_2,
             ((dimension - 2).pow(2) - dim_mod_2) / 4 - tmp1 * (dim_mod_2 + 1),
         ];
-        let mut perm = vec![(Vec::new(), 0); subgroups.iter().sum()];
+        let mut perm = vec![(Vec::new(), 0); orbits.iter().sum()];
 
         let mut cont = 0;
-        for (i, &g) in subgroups.iter().enumerate() {
+        for (i, &g) in orbits.iter().enumerate() {
             for _ in 0..g {
                 perm[cont] = (MAP_PERM_VECT[i](dimension, i), i as u8);
                 cont += 1;
@@ -102,8 +101,8 @@ impl CubeVect {
             altura -= 1;
         }
         altura *= cara[axis].0;
-        for (i, (subgroup, _)) in self.perm.iter().enumerate() {
-            for (j, piece) in subgroup.iter().enumerate() {
+        for (i, (orbit, _)) in self.perm.iter().enumerate() {
+            for (j, piece) in orbit.iter().enumerate() {
                 if piece[cara[axis].1] == altura {
                     slice.push((i, j));
                 }
@@ -113,23 +112,23 @@ impl CubeVect {
     }
     pub fn mv(&self, mv: Move) -> Self {
         let mut cube = self.clone();
-        let (_mv, amount, start, finish) = match mv.kind {
+        let (_mv, qturns, start, finish) = match mv.kind {
             MoveKind::FaceTurn { face, layers } => {
                 let (start, finish) = match layers {
                     Layers::Outer {} => (0, 0),
                     Layers::Slice { index } => (index, index),
                     Layers::Wide { width } => (0, width),
                 };
-                (face as usize, mv.amount, start, finish)
+                (face as usize, mv.qturns, start, finish)
             }
             MoveKind::Rotation { axis } => (
                 axis as usize,
-                mv.amount,
+                mv.qturns,
                 0,
                 (self.dimension - (self.dimension & 1)) as i32,
             ),
         };
-        for _ in 0..(amount + 4) % 4 {
+        for _ in 0..(qturns + 4) % 4 {
             for layer in start..=finish {
                 cube._mv(_mv, layer);
             }
@@ -138,8 +137,8 @@ impl CubeVect {
     }
 }
 
-impl Into<CubePerm> for CubeVect {
-    fn into(self) -> CubePerm {
+impl Into<CubeState> for CubeVect {
+    fn into(self) -> CubeState {
         let mut perm = vec![0; self.perm.len()];
         let mut ori = [0, 1 << 29];
         for (i, (v, kind)) in self.perm.iter().enumerate() {
@@ -210,7 +209,7 @@ impl Into<CubePerm> for CubeVect {
                 cont += 1;
             }
         }
-        CubePerm { perm, ori }
+        CubeState { perm, ori }
     }
 }
 fn _get_len_from_dim(dimension: usize) -> usize {

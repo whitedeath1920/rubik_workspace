@@ -1,6 +1,6 @@
 use core::fmt;
 
-use crate::cube_moves::Move;
+use crate::moves::Move;
 
 pub type Result<T> = core::result::Result<T, CubeError>;
 
