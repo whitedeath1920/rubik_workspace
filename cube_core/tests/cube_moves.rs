@@ -34,7 +34,7 @@ fn test_rotation() {
 fn test_slice() {
     let dimension = 7;
     let rule = MoveSet {
-        moves: vec![MoveFamily::Slice],
+        moves: vec![MoveFamily::Inner],
         turns: vec![Turn::Clockwise, Turn::Anticlockwise, Turn::Double]
     };
     let movetable = MoveTable::new(dimension, &rule);
@@ -185,7 +185,7 @@ fn test_move_s() {
             MoveFamily::Outer,
             MoveFamily::Rotation,
             MoveFamily::Wide,
-            MoveFamily::Slice,
+            MoveFamily::Inner,
         ],
         turns: vec![Turn::Clockwise, Turn::Anticlockwise, Turn::Double],
     };

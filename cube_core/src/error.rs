@@ -1,6 +1,6 @@
 use core::fmt;
 
-use crate::moves::Move;
+use crate::moves::{Move, Axis};
 
 pub type Result<T> = core::result::Result<T, CubeError>;
 
@@ -17,6 +17,9 @@ pub enum CubeError {
     // Errores de movimientos
     InvalidMoveM {got: Move, expected: Vec<Move> },
     InvalidMoveS {got: String, expected: Vec<String> },
+    
+    // Errores de algoritmos
+    InvalidMoveConjugate {got: Move},
 }
 
 impl fmt::Display for CubeError {
@@ -28,6 +31,7 @@ impl fmt::Display for CubeError {
             CubeError::InvalidPermutation => write!(f, "Invalid permutation: Violated parity"),
             CubeError::InvalidMoveM { got, expected } => write!(f, "Invalid move: expected {:?}, got {:?}",expected, got),
             CubeError::InvalidMoveS { got, expected } => write!(f, "Invalid move: expected {:?}, got {:?}",expected, got),
+            CubeError::InvalidMoveConjugate { got } => write!(f, "Invalid move: expected {:?}, got  {:?}",[Axis::X,Axis::Y,Axis::Z],got),
         }
     }
 }

@@ -6,7 +6,7 @@ use crate::{
     input::{BinaryRead, InputArgs},
     output::{BinaryPrint, OutputArgs, PrettyPrint, VisualPrint},
 };
-use cube_core::{Layout, KIND};
+use cube_core::{state::{KIND, NUM_KIND}, Layout};
 use std::io::{Cursor, Read};
 
 
@@ -14,8 +14,8 @@ use std::io::{Cursor, Read};
 struct LayoutWrapper {
     dimension: usize,
     par: bool,
-    orbits: [usize; 7],
-    orbits_offset: [usize; 7],
+    orbits: [usize; NUM_KIND],
+    orbits_offset: [usize; NUM_KIND],
     orbits_len: usize,
 }
 
@@ -76,7 +76,7 @@ impl PrettyPrint for LayoutWrapper {
         }
         s = s + &format!("\tparity:\t\t{}\n", self.par);
         s = s + &format!("\torbits:\n");
-        for i in 0..7 {
+        for i in 0..NUM_KIND {
             s = s + &format!("\t\t{}:\t{}\n", KIND[i], self.orbits[i]);
         }
 
@@ -123,13 +123,13 @@ impl BinaryRead for LayoutWrapper {
         self.par = if tmp[0] == 1 { true } else { false };
 
         let mut tmp = [0u8; 8];
-        for i in 0..7 {
+        for i in 0..NUM_KIND {
             cursor.read_exact(&mut tmp)?;
             self.orbits[i] = usize::from_le_bytes(tmp);
         }
 
         let mut tmp = [0u8; 8];
-        for i in 0..7 {
+        for i in 0..NUM_KIND {
             cursor.read_exact(&mut tmp)?;
             self.orbits_offset[i] = usize::from_le_bytes(tmp);
         }

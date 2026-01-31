@@ -1,8 +1,6 @@
 use std::ops::{Add, AddAssign, Mul, Neg, Sub, SubAssign};
 
-use crate::{
-    state::{CubeState, IDENTITY_ORD, NUM_PER_KIND, ORI_MOD},
-};
+use crate::state::{CubeState, IDENTITY_ORD, NUM_KIND, NUM_PER_KIND, ORI_MOD};
 
 macro_rules! oper_impl {
     ($Op:path, $iOp:ident, $OpAssign:path, $iOpAssign:ident, $lhs:ty, $rhs:ty, $ori:ident, $perm:ident) => {
@@ -108,23 +106,30 @@ fn mul_by_u128(mut n: u128, mut base: CubeState) -> CubeState {
 }
 mul_impl!(signed: i8, i16, i32, i64, i128, isize);
 mul_impl!(unsigned: u8, u16, u32, u64, u128, usize);
-
+#[inline]
+fn add_mod(x: u8, y: u8, mod_: u8) -> u8 {
+    if mod_ == 2 {
+        return (x ^ y) & 1;
+    } else {
+        let s = x + y;
+        return if s >= 3 { s - 3 } else { s };
+    }
+}
 #[inline]
 fn add_ori_mut(a_perm: &mut u128, b_perm: u128, a_ori: &mut u32, b_ori: u32) {
     let kind = a_perm.get_kind();
-
+    let mod_ = ORI_MOD[kind] as u8;
     let tmp_perm = *a_perm;
     let tmp_ori = *a_ori;
     (0..NUM_PER_KIND[kind]).for_each(|i| {
         let idx = b_perm.get(i) as usize;
         a_perm.set(i, tmp_perm.get(idx));
-        a_ori.set(i, (tmp_ori.get(idx) + b_ori.get(i)) % ORI_MOD[kind] as u8);
+        a_ori.set(i, add_mod(tmp_ori.get(idx), b_ori.get(i), mod_));
     });
 }
 #[inline]
 fn add_perm_mut(a_perm: &mut u128, b_perm: u128) {
     let kind = a_perm.get_kind();
-
     let tmp_perm = *a_perm;
     (0..NUM_PER_KIND[kind]).for_each(|i| {
         a_perm.set(i, tmp_perm.get(b_perm.get(i) as usize));
@@ -146,11 +151,9 @@ fn sub_ori_mut(a_perm: &mut u128, b_perm: u128, a_ori: &mut u32, b_ori: u32) {
 #[inline]
 fn sub_perm_mut(a_perm: &mut u128, b_perm: u128) {
     let kind = a_perm.get_kind();
-
     let tmp_perm = *a_perm;
     (0..NUM_PER_KIND[kind]).for_each(|i| {
-        let idx = b_perm.get(i) as usize;
-        a_perm.set(idx, tmp_perm.get(i));
+        a_perm.set(b_perm.get(i) as usize, tmp_perm.get(i));
     });
 }
 // Define las operaciones atómicas y traits utiles para el cubo
@@ -186,18 +189,18 @@ macro_rules! bit_impl {
             }
             #[inline]
             fn to_vec(&self) -> Vec<u8> {
-                let mut vect: Vec<u8> = (0..crate::state::state::NUM_PER_KIND[self.get_kind()])
-                    .map(|i| self.get(i))
-                    .collect();
-                vect.push(self.get_kind() as u8);
+                let kind = self.get_kind();
+                let capacity = crate::state::state::NUM_PER_KIND[kind];
+                let mut vect: Vec<u8> = Vec::with_capacity(capacity + 1);
+                (0..capacity).for_each(|i| vect.push(self.get(i)));
+                vect.push(kind as u8);
                 vect
             }
             #[inline]
             fn from_vec(vect: &[u8]) -> $T {
-                let kind = vect[vect.len() - 1] as usize;
-                let mut a=  <$T>::default();
-                a.set_kind(kind);
-                (0..crate::state::state::NUM_PER_KIND[a.get_kind()])
+                let kind = vect[vect.len() - 1];
+                let mut a = (kind as $T) << $payload;
+                (0..crate::state::state::NUM_PER_KIND[kind as usize])
                     .for_each(|i| a.set(i, vect[i]));
                 a
             }
@@ -211,30 +214,29 @@ bit_impl!(u32, 2, 29);
 impl PartialEq for CubeState {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        if self.perm.len() != other.perm.len() {
+        if self.perm.len() != other.perm.len() || self.ori != other.ori {
             return false;
         }
-        if self.ori != other.ori {
-            return false;
-        }
-        for (a, b) in self.perm.iter().zip(&other.perm) {
-            if !eq_orbit(a, b) {
-                return false;
-            }
-        }
-        true
+        self.perm
+            .iter()
+            .zip(&other.perm)
+            .try_fold(true, |_, (a, b)| eq_orbit(a, b))
+            .is_ok()
     }
 }
 
 #[inline]
-fn eq_orbit(a: &u128, b: &u128) -> bool {
+fn eq_orbit(a: &u128, b: &u128) -> Result<bool, bool> {
     let kind = a.get_kind();
-    for i in 0..NUM_PER_KIND[a.get_kind()] {
-        if IDENTITY_ORD[kind].get(a.get(i) as usize) != IDENTITY_ORD[kind].get(b.get(i) as usize) {
-            return false;
+    assert!(kind < NUM_KIND);
+    let tmp = IDENTITY_ORD[kind];
+    (0..NUM_PER_KIND[kind]).try_fold(true, |acc, i| {
+        if tmp.get(a.get(i) as usize) == tmp.get(b.get(i) as usize) {
+            Ok(acc)
+        } else {
+            Err(false)
         }
-    }
-    true
+    })
 }
 
 impl Eq for CubeState {}

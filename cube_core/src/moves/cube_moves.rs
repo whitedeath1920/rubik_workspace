@@ -6,7 +6,7 @@ use crate::{error::Result, CubeError, state::CubeState, moves::cube_vect::CubeVe
 pub enum MoveFamily {
     Rotation,
     Outer,
-    Slice,
+    Inner,
     Wide,
 }
 
@@ -28,17 +28,17 @@ impl Turn {
 }
 #[derive(Debug)]
 pub struct MoveSet {
-    /// Rotation, TopLayer, MiddleLayer, MultipleLayer,
+    // Rotation, TopLayer, MiddleLayer, MultipleLayer,
     pub moves: Vec<MoveFamily>,
 
-    /// Anticlowise, Clockwise, Double
+    // Anticlowise, Clockwise, Double
     pub turns: Vec<Turn>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Layers {
+pub enum LayerSpec {
     Outer,
-    Slice { index: i32 },
+    Inner { depth: i32 },
     Wide { width: i32 },
 }
 
@@ -49,7 +49,7 @@ pub enum Axis {
     X,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Faces {
+pub enum Face {
     U = 0,
     F = 1,
     R = 2,
@@ -57,7 +57,7 @@ pub enum Faces {
     B = 4,
     L = 5,
 }
-impl Faces {
+impl Face {
     #[inline]
     pub fn to_axis(&self) -> Axis {
         match self {
@@ -69,7 +69,7 @@ impl Faces {
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MoveKind {
-    FaceTurn { face: Faces, layers: Layers },
+    FaceTurn { face: Face, layer: LayerSpec },
     Rotation { axis: Axis },
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -79,28 +79,40 @@ pub struct Move {
 }
 
 impl Move {
+    pub fn invert(&self) -> Self {
+        let mut qturns = (self.qturns + 2) % 4;
+        if qturns == 0 {
+           qturns = 2;
+        }
+       Self {
+           kind: self.kind,
+           qturns
+       } 
+    }
+}
+impl Move {
     pub fn to_string(&self) -> String {
         let qturns = (self.qturns + 4) % 4;
         let mut s = String::new();
         match self.kind {
-            MoveKind::FaceTurn { face, layers } => {
+            MoveKind::FaceTurn { face, layer } => {
                 let face = match face {
-                    Faces::U => "U",
-                    Faces::D => "D",
-                    Faces::F => "F",
-                    Faces::B => "B",
-                    Faces::R => "R",
-                    Faces::L => "L",
+                    Face::U => "U",
+                    Face::D => "D",
+                    Face::F => "F",
+                    Face::B => "B",
+                    Face::R => "R",
+                    Face::L => "L",
                 };
-                match layers {
-                    Layers::Outer => {
+                match layer {
+                    LayerSpec::Outer => {
                         s += face;
                     },
-                    Layers::Slice { index } => {
-                        if index != 1 {s += &index.to_string()}; 
+                    LayerSpec::Inner { depth } => {
+                        if depth != 1 {s += &depth.to_string()}; 
                         s += face;
                     },
-                    Layers::Wide { width } => {
+                    LayerSpec::Wide { width } => {
                         if width != 2 {s+= &width.to_string();}
                         s += face;
                         s += "w";
@@ -155,13 +167,13 @@ impl MoveTable {
             }
         }
         if rule.moves.contains(&MoveFamily::Outer) {
-            let faces = [Faces::U, Faces::F, Faces::R, Faces::D, Faces::B, Faces::L];
+            let faces = [Face::U, Face::F, Face::R, Face::D, Face::B, Face::L];
             for face in faces {
                 for &qturns in &turns {
                     let mv = Move {
                         kind: MoveKind::FaceTurn {
                             face,
-                            layers: Layers::Outer,
+                            layer: LayerSpec::Outer,
                         },
                         qturns,
                     };
@@ -173,15 +185,15 @@ impl MoveTable {
                 }
             }
         }
-        if rule.moves.contains(&MoveFamily::Slice) {
-            let faces = [Faces::U, Faces::F, Faces::R, Faces::D, Faces::B, Faces::L];
+        if rule.moves.contains(&MoveFamily::Inner) {
+            let faces = [Face::U, Face::F, Face::R, Face::D, Face::B, Face::L];
             for face in faces {
                 for index in 2..=(dimension >> 1) {
                     for &qturns in &turns {
                         let mv = Move {
                             kind: MoveKind::FaceTurn {
                                 face,
-                                layers: Layers::Slice { index: index as i32 },
+                                layer: LayerSpec::Inner { depth: index as i32 },
                             },
                             qturns,
                         };
@@ -193,14 +205,14 @@ impl MoveTable {
             }
         }
         if rule.moves.contains(&MoveFamily::Wide) {
-            let faces = [Faces::U, Faces::F, Faces::R, Faces::D, Faces::B, Faces::L];
+            let faces = [Face::U, Face::F, Face::R, Face::D, Face::B, Face::L];
             for face in faces {
                 for width in 2..=(dimension >> 1) {
                     for &qturns in &turns {
                         let mv = Move {
                             kind: MoveKind::FaceTurn {
                                 face,
-                                layers: Layers::Wide { width: width as i32 },
+                                layer: LayerSpec::Wide { width: width as i32 },
                             },
                             qturns,
                         };
@@ -212,6 +224,7 @@ impl MoveTable {
             }
         }
         Self { moves , moves_s }
+        // Self { moves }
     }
 
     pub fn make_move_s(&self, mv: &str, cube: &mut CubeState) {

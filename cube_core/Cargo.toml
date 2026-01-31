@@ -2,3 +2,10 @@
 name = "cube_core"
 version = "0.1.0"
 edition = "2024"
+
+[dev-dependencies]
+criterion = "0.8.1"
+
+[[bench]]
+name = "ben"
+harness = false

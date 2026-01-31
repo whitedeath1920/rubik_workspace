@@ -1,6 +1,6 @@
 use anyhow::Result;
 use cube_core::{
-    cube_moves::{CubeMoves, MoveClass, MoveRules, Turn}, Bit, CubeState, KIND
+    moves::{MoveTable, MoveFamily, MoveSet, Turn}, state::{Bit, CubeState, KIND}
 };
 use std::io::{Cursor, Read};
 
@@ -66,16 +66,16 @@ impl CubeStateCmd {
             self.out.writer_output(&cube)?;
         }
         if self.moves.is_some() {
-            let rule = MoveRules {
+            let rule = MoveSet {
                 moves: vec![
-                    MoveClass::Outer,
-                    MoveClass::Rotation,
-                    MoveClass::Wide,
-                    MoveClass::Slice,
+                    MoveFamily::Outer,
+                    MoveFamily::Rotation,
+                    MoveFamily::Wide,
+                    MoveFamily::Inner,
                 ],
                 turns: vec![Turn::Clockwise, Turn::Double, Turn::Anticlockwise],
             };
-            let moveset = CubeMoves::new(cube.dimension, &rule);
+            let moveset = MoveTable::new(cube.dimension, &rule);
             let moves = self.moves.clone().unwrap();
             for mv in moves.split(' ') {
                 moveset.make_move_s(mv, &mut cube.cube);

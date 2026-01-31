@@ -1,10 +1,20 @@
 use crate::{
-    moves::{Layers, Move, MoveKind},
+    moves::{LayerSpec, Move, MoveKind},
     state::{Bit, CubeState},
 };
 
-pub const MAP_PERM_VECT: [fn(usize, usize) -> Vec<[i32; 3]>; 7] =
-    [_sub_0, _sub_1, _sub_2, _sub_3, _sub_4, _sub_5, _sub_6];
+fn map_perm_vect(dimension: usize, kind: usize, index: i32, mut vect: &mut Vec<[i32; 3]>) {
+    vect.clear();
+    match kind {
+        0 => _sub_0(dimension, index, &mut vect),
+        1 => _sub_1(dimension, index, &mut vect),
+        2 => _sub_2(dimension, index, &mut vect),
+        3 => _sub_3(dimension, index, &mut vect),
+        4 => _sub_4(dimension, index, &mut vect),
+        5 => _sub_5(dimension, index, &mut vect),
+        _ => panic!("Invalid kind"),
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct CubeVect {
@@ -18,21 +28,18 @@ impl CubeVect {
     pub fn new(dimension: usize) -> Self {
         let dim_mod_2 = dimension % 2;
         let tmp1 = (dimension - 2 - dim_mod_2) / 2;
-        let orbits = [
-            1,
-            dim_mod_2,
-            dim_mod_2,
-            tmp1,
-            tmp1,
-            tmp1 * dim_mod_2,
-            ((dimension - 2).pow(2) - dim_mod_2) / 4 - tmp1 * (dim_mod_2 + 1),
-        ];
-        let mut perm = vec![(Vec::new(), 0); orbits.iter().sum()];
+        let orbits = [1, dim_mod_2, dim_mod_2, tmp1.pow(2), tmp1, tmp1 * dim_mod_2];
+        let mut perm = vec![(Vec::with_capacity(24), 0); orbits.iter().sum()];
 
         let mut cont = 0;
+        let mut vect = Vec::with_capacity(24);
         for (i, &g) in orbits.iter().enumerate() {
-            for _ in 0..g {
-                perm[cont] = (MAP_PERM_VECT[i](dimension, i), i as u8);
+            for index in 0..g {
+                map_perm_vect(dimension, i, index as i32, &mut vect);
+                // perm[cont].1 = i as u8;
+                // std::mem::swap(&mut vect, &mut perm[cont].0);
+                perm[cont] = (vect.clone(), i as u8);
+                // perm[cont] = (std::mem::replace(&mut vect, Vec::with_capacity(24)), i as u8);
                 cont += 1;
             }
         }
@@ -113,11 +120,11 @@ impl CubeVect {
     pub fn mv(&self, mv: Move) -> Self {
         let mut cube = self.clone();
         let (_mv, qturns, start, finish) = match mv.kind {
-            MoveKind::FaceTurn { face, layers } => {
-                let (start, finish) = match layers {
-                    Layers::Outer {} => (0, 0),
-                    Layers::Slice { index } => (index, index),
-                    Layers::Wide { width } => (0, width),
+            MoveKind::FaceTurn { face, layer } => {
+                let (start, finish) = match layer {
+                    LayerSpec::Outer {} => (0, 0),
+                    LayerSpec::Inner { depth } => (depth, depth),
+                    LayerSpec::Wide { width } => (0, width),
                 };
                 (face as usize, mv.qturns, start, finish)
             }
@@ -141,20 +148,28 @@ impl Into<CubeState> for CubeVect {
     fn into(self) -> CubeState {
         let mut perm = vec![0; self.perm.len()];
         let mut ori = [0, 1 << 29];
+        let mut vect = Vec::with_capacity(24);
+        let mut cont = 0;
+        let dim_mod_2 = self.dimension & 1;
+        let tmp1 = (self.dimension - 2 - dim_mod_2) / 2;
+        let orbits = [1, dim_mod_2, dim_mod_2, tmp1.pow(2), tmp1, tmp1 * dim_mod_2];
         for (i, (v, kind)) in self.perm.iter().enumerate() {
-            perm[i].set_kind(*kind as usize);
+            let kind = *kind as usize;
+            perm[i].set_kind(kind);
+            map_perm_vect(self.dimension, kind, cont, &mut vect);
             for (j, piece) in v.iter().enumerate() {
                 let mut index = 0;
-                for (i, p) in MAP_PERM_VECT[*kind as usize](self.dimension, *kind as usize)
-                    .iter()
-                    .enumerate()
-                {
+                for (i, p) in vect.iter().enumerate() {
                     if p == piece {
                         index = i;
                         break;
                     }
                 }
                 perm[i].set(index, j as u8);
+            }
+            cont += 1;
+            if cont as usize >= orbits[kind] {
+                cont = 0;
             }
         }
         let dims = self.dimension as i32 >> 1;
@@ -168,7 +183,9 @@ impl Into<CubeState> for CubeVect {
         ];
         for (o, piece) in self.ori[0].clone().iter().zip(self.perm[0].0.clone()) {
             let mut index = 0;
-            for (i, p) in MAP_PERM_VECT[0](self.dimension, 0).iter().enumerate() {
+
+            map_perm_vect(self.dimension, 0, 0, &mut vect);
+            for (i, p) in vect.iter().enumerate() {
                 if *p == piece {
                     index = i;
                     break;
@@ -227,11 +244,11 @@ pub fn get_dim_from_len(len: usize, par: bool) -> usize {
         panic!("Invalid dimension for length {}", len);
     }
 }
-fn pattern_1(a: i32, b: i32, c: i32) -> Vec<[i32; 3]> {
-    vec![[-a, b, -c], [-c, b, a], [a, b, c], [c, b, -a]]
+fn pattern_1(a: i32, b: i32, c: i32) -> [[i32; 3]; 4] {
+    [[-a, b, -c], [-c, b, a], [a, b, c], [c, b, -a]]
 }
-fn pattern_2(a: i32, b: i32, c: i32) -> Vec<[i32; 3]> {
-    vec![
+fn pattern_2(a: i32, b: i32, c: i32) -> [[i32; 3]; 8] {
+    [
         [-a, b, -c],
         [-c, b, -a],
         [-c, b, a],
@@ -242,24 +259,20 @@ fn pattern_2(a: i32, b: i32, c: i32) -> Vec<[i32; 3]> {
         [a, b, -c],
     ]
 }
-fn _sub_0(dimension: usize, _: usize) -> Vec<[i32; 3]> {
+fn _sub_0(dimension: usize, _: i32, vect: &mut Vec<[i32; 3]>) {
     let n = dimension as i32 >> 1;
-    let mut vect = pattern_1(n, -n, n);
-    vect.append(&mut pattern_1(n, n, n));
-
-    vect
+    vect.extend_from_slice(&pattern_1(n, -n, n));
+    vect.extend_from_slice(&pattern_1(n, n, n));
 }
-fn _sub_1(dimension: usize, _: usize) -> Vec<[i32; 3]> {
+fn _sub_1(dimension: usize, _: i32, vect: &mut Vec<[i32; 3]>) {
     let n = dimension as i32 >> 1;
-    let mut vect = pattern_1(0, -n, n);
-    vect.append(&mut pattern_1(n, 0, n));
-    vect.append(&mut pattern_1(0, n, n));
-
-    vect
+    vect.extend_from_slice(&pattern_1(0, -n, n));
+    vect.extend_from_slice(&pattern_1(n, 0, n));
+    vect.extend_from_slice(&pattern_1(0, n, n));
 }
-fn _sub_2(dimension: usize, _: usize) -> Vec<[i32; 3]> {
+fn _sub_2(dimension: usize, _: i32, vect: &mut Vec<[i32; 3]>) {
     let n = dimension as i32 >> 1;
-    vec![
+    vect.extend_from_slice(&[
         //x   y   z
         [0, -n, 0],
         [0, 0, -n],
@@ -267,47 +280,46 @@ fn _sub_2(dimension: usize, _: usize) -> Vec<[i32; 3]> {
         [0, 0, n],
         [n, 0, 0],
         [0, n, 0],
-    ]
+    ]);
 }
-fn _sub_3(dimension: usize, idx: usize) -> Vec<[i32; 3]> {
+fn _sub_3(dimension: usize, idx: i32, vect: &mut Vec<[i32; 3]>) {
     let n = dimension as i32 >> 1;
-    let ni = n - 1 - idx as i32;
-    let mut vect = pattern_1(ni, -n, ni);
-    vect.append(&mut pattern_2(ni, -ni, n));
-    vect.append(&mut pattern_2(ni, ni, n));
-    vect.append(&mut pattern_1(ni, n, ni));
+    let tmp = ((dimension - 2 - (dimension % 2)) / 2) as i32;
+    let x = n - (idx) % tmp - 1;
+    let z = n - 1 - (idx - idx % tmp) / tmp;
 
-    vect
-}
-fn _sub_4(dimension: usize, idx: usize) -> Vec<[i32; 3]> {
-    let n = dimension as i32 >> 1;
-    let ni = n - 1 - idx as i32;
-    let mut vect = pattern_2(ni, -n, n);
-    vect.append(&mut pattern_1(n, -ni, n));
-    vect.append(&mut pattern_1(n, ni, n));
-    vect.append(&mut pattern_2(ni, n, n));
+    vect.extend_from_slice(&pattern_1(x, -n, z));
+    if z == x {
+        vect.extend_from_slice(&pattern_2(z, -z, n));
+        vect.extend_from_slice(&pattern_2(z, z, n));
+    } else if z > x {
+        vect.extend_from_slice(&pattern_1(n, -z, x));
+        vect.extend_from_slice(&pattern_1(z, -x, n));
+        vect.extend_from_slice(&pattern_1(n, x, z));
+        vect.extend_from_slice(&pattern_1(x, z, n));
+    } else {
+        vect.extend_from_slice(&pattern_1(z, -x, n));
+        vect.extend_from_slice(&pattern_1(n, -z, x));
+        vect.extend_from_slice(&pattern_1(x, z, n));
+        vect.extend_from_slice(&pattern_1(n, x, z));
+    }
 
-    vect
+    vect.extend_from_slice(&pattern_1(x, n, z));
 }
-fn _sub_5(dimension: usize, idx: usize) -> Vec<[i32; 3]> {
+fn _sub_4(dimension: usize, idx: i32, vect: &mut Vec<[i32; 3]>) {
     let n = dimension as i32 >> 1;
-    let a = idx as i32 + 1;
+    let ni = n - 1 - idx;
+    vect.extend_from_slice(&pattern_2(ni, -n, n));
+    vect.extend_from_slice(&pattern_1(n, -ni, n));
+    vect.extend_from_slice(&pattern_1(n, ni, n));
+    vect.extend_from_slice(&pattern_2(ni, n, n));
+}
+fn _sub_5(dimension: usize, idx: i32, vect: &mut Vec<[i32; 3]>) {
+    let n = dimension as i32 >> 1;
+    let a = idx + 1;
     let ni = n - a;
-    let mut vect = pattern_1(a, -n, ni);
-    vect.append(&mut pattern_2(ni, -ni, n));
-    vect.append(&mut pattern_2(ni, ni, n));
-    vect.append(&mut pattern_1(a, n, ni));
-
-    vect
-}
-fn _sub_6(dimension: usize, idx: usize) -> Vec<[i32; 3]> {
-    let n = dimension as i32 >> 1;
-    let ni = n - 1 - idx as i32;
-    let mut vect = pattern_1(0, -n, ni);
-    vect.append(&mut pattern_1(0, -ni, n));
-    vect.append(&mut pattern_2(ni, 0, n));
-    vect.append(&mut pattern_1(0, ni, n));
-    vect.append(&mut pattern_1(0, n, ni));
-
-    vect
+    vect.extend_from_slice(&pattern_1(a, -n, ni));
+    vect.extend_from_slice(&pattern_2(ni, -ni, n));
+    vect.extend_from_slice(&pattern_2(ni, ni, n));
+    vect.extend_from_slice(&pattern_1(a, n, ni));
 }
