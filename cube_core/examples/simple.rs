@@ -10,7 +10,7 @@ use std::{
 };
 
 use cube_core::{
-    moves::{MoveFamily, MoveSet, MoveTable, Turn},
+    moves::{CubePair, MoveFamily, MoveSet, MoveTable, Turn},
     n_state::{factorial, for_nested, nested_for, search},
     state::{Bit, CubeState},
 };
@@ -104,24 +104,25 @@ fn total_pieces(n: usize) -> u128 {
     (n.pow(3) * 3) as u128
 }
 fn main() -> io::Result<()> {
-    //let cambiar = "asdfas";
     let args = env::args().collect::<Vec<String>>();
     assert!(args.len() == 2);
     let n: usize = args[1].parse().unwrap();
     println!("Creating nxnxn, n = {n}");
-    let arr = create_matrix(n); // Crea una matriz donde cada elemento solo guarda su correlativo
-    println!("Traversing array");
-    let init = SystemTime::now();
-    traverse_cube(n, &arr, false)?;
-    let delta = init.elapsed().unwrap();
-    println!("time elapsed: {:?}", delta);
-    println!(
-        "analized: \nTotal layers:{}\t\t{} layer/s\nTotal pieces:{}\t\t {} ns/piece",
-        total_layer(n),
-        total_layer(n) / delta.as_secs_f64(),
-        total_pieces(n),
-        delta.as_nanos()/total_pieces(n)
-    );
+    let cubepair = CubePair::new(n);
+    cubepair.print();
+    // let arr = create_matrix(n); // Crea una matriz donde cada elemento solo guarda su correlativo
+    // println!("Traversing array");
+    // let init = SystemTime::now();
+    // traverse_cube(n, &arr, false)?;
+    // let delta = init.elapsed().unwrap();
+    // println!("time elapsed: {:?}", delta);
+    // println!(
+    //     "analized: \nTotal layers:{}\t\t{} layer/s\nTotal pieces:{}\t\t {} ns/piece",
+    //     total_layer(n),
+    //     total_layer(n) / delta.as_secs_f64(),
+    //     total_pieces(n),
+    //     delta.as_nanos()/total_pieces(n)
+    // );
     Ok(())
 }
 
