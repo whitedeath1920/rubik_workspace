@@ -126,7 +126,7 @@ fn add() {
         vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
     ];
     let cube1 = n_state::CubeState::from_vec((perm1, ori1));
-
+    
     let perm2 = vec![
         vec![0, 1, 3, 7, 4, 5, 2, 6, 0],
         vec![0, 1, 7, 3, 4, 5, 2, 10, 8, 9, 6, 11, 1],
@@ -149,13 +149,15 @@ fn add() {
     ];
     let cube3 = n_state::CubeState::from_vec((perm3, ori3));
 
-    let tmp = cube0.clone() + &cube1;
-    for (a,b) in tmp.perm.iter().zip(cube1.perm.iter()) {
+    let tmp = cube1.clone() + &cube2;
+    println!("{:?}",tmp.ori[0].to_vec());
+    println!("{:?}",cube3.ori[0].to_vec());
+    for (a,b) in tmp.perm.iter().zip(cube3.perm.iter()) {
         assert_eq!(a.to_vec(),b.to_vec());
     }
     assert_eq!(cube1, cube0.clone() + &cube1);
     assert_eq!(cube1, cube1.clone() + &cube0);
     assert_eq!(cube0, cube1.clone() + &cube1 + &cube1 + &cube1);
     assert_eq!(cube1, cube1.clone() + &cube0);
-    // assert_eq!(cube3, cube1.clone() + &cube2);
+    assert_eq!(cube3, cube1.clone() + &cube2);
 }

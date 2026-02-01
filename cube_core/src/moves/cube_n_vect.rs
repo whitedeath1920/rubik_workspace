@@ -241,10 +241,10 @@ fn _sub_3(dimension: i32, kind: usize, idx: i32, arr: &mut Vec<(Point, State)>) 
     let x = n - (idx) % tmp - 1;
     let z = n - 1 - (idx - idx % tmp) / tmp;
 
-    arr.extend_from_slice(&pattern_1(x, -n, z, kind, idx, 0));
+    // arr.extend_from_slice(&pattern_1(x, -n, z, kind, idx, 0));
     if z == x {
-        arr.extend_from_slice(&pattern_2(z, -z, n, kind, idx, 1));
-        arr.extend_from_slice(&pattern_2(z, z, n, kind, idx, 1));
+        arr.extend_from_slice(&pattern_2(z, -z, n, kind, idx, 4));
+        arr.extend_from_slice(&pattern_2(z, z, n, kind, idx, 12));
     } else if z > x {
         arr.extend_from_slice(&pattern_1(n, -z, x, kind, idx, 1));
         arr.extend_from_slice(&pattern_1(z, -x, n, kind, idx, 1));
@@ -255,8 +255,8 @@ fn _sub_3(dimension: i32, kind: usize, idx: i32, arr: &mut Vec<(Point, State)>) 
         arr.extend_from_slice(&pattern_1(n, -z, x, kind, idx, 1));
         arr.extend_from_slice(&pattern_1(x, z, n, kind, idx, 1));
         arr.extend_from_slice(&pattern_1(n, x, z, kind, idx, 1));
-    }
-    arr.extend_from_slice(&pattern_1(x, n, z,kind,idx,20));
+    } 
+    // arr.extend_from_slice(&pattern_1(x, n, z,kind,idx,20));
 
 }
 fn number_of_cubies(dimension: usize) -> usize {

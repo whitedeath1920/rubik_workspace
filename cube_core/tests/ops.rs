@@ -1,4 +1,4 @@
-use cube_core::{array_build, n_state::{Bit, for_nested, from_perm_to_slice}};
+use cube_core::{array_build, n_state::Bit};
 
 #[test]
 fn array_build() {
@@ -43,11 +43,4 @@ fn slice_vec() {
     );
     
     assert_eq!(a.to_vec(), slice.to_vec());
-}
-#[test]
-fn nested() {
-    
-    for_nested();
-    
-    assert!(false);
 }

@@ -57,6 +57,20 @@ impl<const ALIGN: usize> Array<ALIGN> {
         }
     }
     #[inline(always)]
+    pub fn get(&self, index: usize) -> u128 {
+        debug_assert!(index < self.len);
+        unsafe {
+            *self.ptr.as_ptr().add(index)
+        }
+    }
+    #[inline(always)]
+    pub fn get_mut(&mut self, index: usize) -> &mut u128 {
+        debug_assert!(index < self.len);
+        unsafe {
+            &mut *self.ptr.as_ptr().add(index)
+        }
+    }
+    #[inline(always)]
     pub fn iter(&self) -> Iter<'_> {
         let p = self.as_ptr();
         unsafe {

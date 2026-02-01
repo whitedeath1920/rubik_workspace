@@ -2,8 +2,8 @@ use std::ops::{Add, AddAssign, Sub, SubAssign};
 
 use crate::n_state::{CubeState, state::NUM_PER_KIND};
 const ADD_MOD: [[u32; 5]; 4] = [
-    [0, 1, 0, 1, 0],
     [0, 1, 2, 0, 1],
+    [0, 1, 0, 1, 0],
     [0, 0, 0, 0, 0],
     [0, 0, 0, 0, 0],
 ];
@@ -16,7 +16,7 @@ const ADD_MOD: [[u32; 5]; 4] = [
 //     }
 // }
 // impl AddAssign<&CubeState> for CubeState {
-//     #[inline]
+//     #[inline(always)]
 //     fn add_assign(&mut self, rhs: &Self) {
 //         let mut idx = 0;
 
@@ -43,37 +43,6 @@ const ADD_MOD: [[u32; 5]; 4] = [
 //         }
 //     }
 // }
-// #[inline(always)]
-// fn add_ori_mut(
-//     a_perm: &mut u128,
-//     b_perm: u128,
-//     a_ori: &mut u32,
-//     b_ori: u32,
-//     buf_perm: [u128; 24],
-//     buf_ori: [u32; 12],
-// ) {
-//     let kind = a_perm.get_kind();
-//     from_perm_to_slice(*a_perm, b_perm, &mut buf_perm, kind);
-//     // a_perm.to_slice(&mut buffer[0]);
-//     a_ori.to_slice(&mut buffer[1]);
-//     *a_perm = (kind as u128) << 125;
-//     *a_ori = (kind as u32) << 29;
-//     // b_perm.to_slice(&mut buffer[2]);
-//     b_ori.to_slice(&mut buffer[3]);
-//     for ((i, idx), ori) in (0..NUM_PER_KIND[kind]).zip(buf_perm).zip(buf_ori) {
-//         *a_perm |= idx;
-//         // *a_ori |= ADD_MOD[kind][(buffer[1][idx as usize] + ori) as usize] << u32::SHIFT[i];
-//     }
-// }
-// #[inline(always)]
-// fn add_perm_mut(a_perm: &mut u128, b_perm: u128, mut buffer: [u128; 24]) {
-//     let kind = a_perm.get_kind();
-//     from_perm_to_slice(*a_perm, b_perm, &mut buffer, kind);
-//     *a_perm = (kind as u128) << 125;
-//     for (_, idx) in (0..NUM_PER_KIND[kind]).zip(buffer) {
-//         *a_perm |= idx;
-//     }
-// }
 const PERM_SHIFT: [[u128; 24]; 24] = {
     let mut arr = [[0u128; 24]; 24];
     let mut i = 0;
@@ -95,7 +64,7 @@ const ORI_SHIFT: [[[u32; 5]; 12]; 4] = {
         while o < 12 {
             let mut oo = 0;
             while oo < 5 {
-                arr[kind][o][oo] = ADD_MOD[kind][oo] << o;
+                arr[kind][o][oo] = ADD_MOD[kind][oo] << (o * 2);
                 oo += 1;
             }
             o += 1;
@@ -257,7 +226,6 @@ macro_rules! add_sub_impl {
                     idx += 1;
                     $op_ori(&mut a_perm, &mut self.ori[1], b_perm, rhs.ori[1], 1);
                 }
-
                 for i in idx..self.perm.len() {
                     let mut a_perm = unsafe { &mut *p_a_p.add(i) };
                     let b_perm = unsafe { *p_b_p.add(i) };
@@ -268,7 +236,7 @@ macro_rules! add_sub_impl {
     };
     () => {
         add_sub_impl!(base: add, sum_ori, perm_add, ori_add, Add<&CubeState>, AddAssign<&CubeState>, add_assign);
-        // add_sub_impl!(base: sub, sub_ori, perm_sub, ori_sub, Sub<&CubeState>, SubAssign<&CubeState>, sub_assign);
+        add_sub_impl!(base: sub, sub_ori, perm_sub, ori_sub, Sub<&CubeState>, SubAssign<&CubeState>, sub_assign);
     };
 }
 add_sub_impl!();
@@ -308,7 +276,6 @@ pub fn from_perm_ori_to_slice(
         *a_ori |= ori_shift[produced][(o.get(v_p[0] as usize) + v_o[0]) as usize];
         *a_ori |= ori_shift[produced + 1][(o.get(v_p[1] as usize) + v_o[1]) as usize];
         *a_ori |= ori_shift[produced + 2][(o.get(v_p[2] as usize) + v_o[2]) as usize];
-
         produced += 3;
         b_perm >>= shift_p;
         b_ori >>= shift_o;
@@ -536,106 +503,3 @@ macro_rules! bit_impl {
 }
 bit_impl!(u128, 5, 125, 24);
 bit_impl!(u32, 2, 29, 12);
-
-pub fn factorial(n: usize) -> usize {
-    (1..=n).product::<usize>()
-}
-pub fn check(vals: &[u128]) -> bool {
-    let mut arr = [false; 24];
-    for val in vals {
-        if arr[*val as usize] {
-            return false;
-        }
-        arr[*val as usize] = true;
-    }
-    true
-}
-pub fn search(permutation: &mut Vec<usize>, n: usize, chosen: &mut Vec<bool>, count: &mut usize) {
-    if permutation.len() == n {
-        *count += 1;
-        // process permutation
-    } else {
-        for i in 0..n {
-            if chosen[i] {
-                continue;
-            }
-            chosen[i] = true;
-            permutation.push(i);
-            search(permutation, n, chosen, count);
-            chosen[i] = false;
-            permutation.pop();
-        }
-    }
-}
-pub fn nested_for(cont: &mut usize, indent: usize, perm: u128, values: &mut [u128]) {
-    values[indent] = 0;
-    while values[indent] < perm {
-        // println!("{}:{:?}:{}",indent,values,perm-1);
-        if indent >= perm as usize - 1 {
-            if check(values) {
-                // println!("{:?}",values);
-                *cont += 1;
-            }
-        } else {
-            nested_for(cont, indent + 1, perm, values);
-        }
-        values[indent] += 1;
-    }
-}
-pub fn for_nested() {
-    let size: u128 = 12;
-    let mut vals = vec![0u128; size as usize];
-    let mut cont = 0;
-    println!("asdfasdf");
-    while vals[size as usize - 1] < size {
-        if vals[0] == size {
-            vals[0] = 0;
-            for i in 1..(size as usize) {
-                vals[i] += 1;
-                if vals[i] >= size && i < (size as usize - 1) {
-                    vals[i] = 0;
-                } else {
-                    break;
-                }
-            }
-        } else {
-            // if check(&vals) {
-            //     cont += 1;
-            // }
-            vals[0] += 1;
-        }
-    }
-    // while vals[0] < 6 {
-    //     vals[1] = 0;
-    //     // println!("a: cont {}: {} {} {} {} {} {}",cont, a, b, c, d, e, f);
-    //     while b < 6  {
-    //         c = 0;
-    //         // println!("b: cont {}: {} {} {} {} {} {}",cont, a, b, c, d, e, f);
-    //         while c < 6  {
-    //             d = 0;
-    //             // println!("c: cont {}: {} {} {} {} {} {}",cont, a, b, c, d, e, f);
-    //             while d < 6  {
-    //                 e = 0;
-    //                 // println!("d: cont {}: {} {} {} {} {} {}",cont, a, b, c, d, e, f);
-    //                 while e < 6  {
-    //                     f = 0;
-    //                     // println!("e: cont {}: {} {} {} {} {} {}",cont, a, b, c, d, e, f);
-    //                     while f < 6  {
-    //                         if check(a, b, c, d, e, f) {
-    //                             println!("f: cont {}: {} {} {} {} {} {}",cont, a, b, c, d, e, f);
-    //                             cont += 1;
-    //                         }
-    //                         f += 1;
-    //                     }
-    //                     e+= 1;
-    //                 }
-    //                 d+= 1;
-    //             }
-    //             c+= 1;
-    //         }
-    //         b += 1;
-    //     }
-    //     a += 1;
-    // }
-    println!("cont: {}", cont);
-}

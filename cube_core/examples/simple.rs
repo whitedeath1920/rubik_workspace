@@ -11,7 +11,7 @@ use std::{
 
 use cube_core::{
     moves::{CubePair, MoveFamily, MoveSet, MoveTable, Turn},
-    n_state::{factorial, for_nested, nested_for, search},
+    n_state,
     state::{Bit, CubeState},
 };
 enum Layer {
@@ -103,7 +103,57 @@ fn total_layer(n: usize) -> f64 {
 fn total_pieces(n: usize) -> u128 {
     (n.pow(3) * 3) as u128
 }
+fn add() {
+    let dimension = 3;
+    let cube0 = n_state::CubeState::unchecked_new(dimension);
+
+    let perm1 = vec![
+        vec![0, 1, 2, 3, 5, 6, 7, 4, 0],
+        vec![0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 8, 1],
+        vec![0, 1, 2, 3, 4, 5, 2],
+    ];
+    let ori1 = vec![
+        vec![0, 0, 0, 0, 0, 0, 0, 0, 0],
+        vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    ];
+    let cube1 = n_state::CubeState::from_vec((perm1, ori1));
+    dbg!(&cube1);
+    
+    let perm2 = vec![
+        vec![0, 1, 3, 7, 4, 5, 2, 6, 0],
+        vec![0, 1, 7, 3, 4, 5, 2, 10, 8, 9, 6, 11, 1],
+        vec![0, 1, 2, 3, 4, 5, 2],
+    ];
+    let ori2 = vec![
+        vec![0, 0, 1, 2, 0, 0, 2, 1, 0],
+        vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    ];
+    let cube2 = n_state::CubeState::from_vec((perm2, ori2));
+
+    let perm3 = vec![
+        vec![0, 1, 3, 4, 5, 6, 2, 7, 0],
+        vec![0, 1, 7, 3, 4, 5, 2, 11, 9, 10, 6, 8, 1],
+        vec![0, 1, 2, 3, 4, 5, 2],
+    ];
+    let ori3 = vec![
+        vec![0, 0, 1, 2, 0, 0, 2, 1, 0],
+        vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    ];
+    let cube3 = n_state::CubeState::from_vec((perm3, ori3));
+
+    // let tmp = cube0.clone() + &cube1;
+    // for (a,b) in tmp.perm.iter().zip(cube1.perm.iter()) {
+    //     assert_eq!(a.to_vec(),b.to_vec());
+    // }
+    assert_eq!(cube1, cube0.clone() + &cube1);
+    assert_eq!(cube1, cube1.clone() + &cube0);
+    assert_eq!(cube0, cube1.clone() + &cube1 + &cube1 + &cube1);
+    assert_eq!(cube1, cube1.clone() + &cube0);
+    assert_eq!(cube3, cube1.clone() + &cube2);
+}
 fn main() -> io::Result<()> {
+    add();
+    return Ok(());
     let args = env::args().collect::<Vec<String>>();
     assert!(args.len() == 2);
     let n: usize = args[1].parse().unwrap();
@@ -126,26 +176,9 @@ fn main() -> io::Result<()> {
     Ok(())
 }
 
-fn main__() {
-    let n = 12;
-    let mut permutation = vec![];
-    let mut chosen = vec![false; n];
-    let mut count = 0;
-    search(&mut permutation, n, &mut chosen, &mut count);
-    println!("count: {}", count);
-}
 
-fn main_() {
-    // for_nested();
-    let mut count = 0;
-    let perm = 10;
-    let mut arr = Vec::from_iter((0..perm).rev());
-    println!("arr: {:?}", arr);
-    // let mut arr = vec![0;perm];
-    nested_for(&mut count, 0, perm as u128, &mut arr);
-    println!("count: {}", count);
-    println!("arr: {:?}", arr);
-}
+
+
 
 fn _asdf() {
     let dimension = 2;
