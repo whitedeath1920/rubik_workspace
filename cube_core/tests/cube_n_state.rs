@@ -161,3 +161,57 @@ fn add() {
     assert_eq!(cube1, cube1.clone() + &cube0);
     assert_eq!(cube3, cube1.clone() + &cube2);
 }
+#[test]
+fn test_sub() {
+    let dimension = 3;
+    let cube0 = n_state::CubeState::unchecked_new(dimension);
+
+    let perm1 = vec![
+        vec![0, 1, 2, 3, 5, 6, 7, 4, 0],
+        vec![0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 8, 1],
+        vec![0, 1, 2, 3, 4, 5, 2],
+    ];
+    let ori1 = vec![
+        vec![0, 0, 0, 0, 0, 0, 0, 0, 0],
+        vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    ];
+    let cube1 = n_state::CubeState::from_vec((perm1, ori1));
+
+    let perm2 = vec![
+        vec![0, 1, 3, 7, 4, 5, 2, 6, 0],
+        vec![0, 1, 7, 3, 4, 5, 2, 10, 8, 9, 6, 11, 1],
+        vec![0, 1, 2, 3, 4, 5, 2],
+    ];
+    let ori2 = vec![
+        vec![0, 0, 1, 2, 0, 0, 2, 1, 0],
+        vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    ];
+    let cube2 = n_state::CubeState::from_vec((perm2, ori2));
+
+    let perm3 = vec![
+        vec![0, 1, 3, 4, 5, 6, 2, 7, 0],
+        vec![0, 1, 7, 3, 4, 5, 2, 11, 9, 10, 6, 8, 1],
+        vec![0, 1, 2, 3, 4, 5, 2],
+    ];
+    let ori3 = vec![
+        vec![0, 0, 1, 2, 0, 0, 2, 1, 0],
+        vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    ];
+    let cube3 = n_state::CubeState::from_vec((perm3, ori3));
+
+    let perm4 = vec![
+        vec![0, 1, 2, 3, 7, 4, 5, 6, 0],
+        vec![0, 1, 2, 3, 4, 5, 6, 7, 11, 8, 9, 10, 1],
+        vec![0, 1, 2, 3, 4, 5, 2],
+    ];
+    let ori4 = vec![
+        vec![0, 0, 0, 0, 0, 0, 0, 0, 0],
+        vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    ];
+    let cube4 = n_state::CubeState::from_vec((perm4, ori4));
+
+    assert_eq!(cube4.clone(), cube0.clone() - &cube1);
+    assert_eq!(cube1, cube1.clone() - &cube0);
+    assert_eq!(cube0, cube1.clone() - &cube1);
+    assert_eq!(cube1, cube3.clone() - &cube2);
+}

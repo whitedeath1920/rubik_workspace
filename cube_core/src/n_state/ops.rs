@@ -75,33 +75,27 @@ const ORI_SHIFT: [[[u32; 5]; 12]; 4] = {
 };
 macro_rules! perm_add {
     ($pos:expr, $val:expr) => {
-        PERM_SHIFT[$pos][$val]
+        &PERM_SHIFT[$pos][$val]
     };
 }
 macro_rules! perm_sub {
     ($pos:expr, $val: expr) => {
-        PERM_SHIFT[$val][$pos]
+        &PERM_SHIFT[$val][$pos]
     };
 }
 macro_rules! ori_add {
-    ($arr:expr, $a:expr, $b:expr) => {
-        $arr[($a + $b) as usize]
+    ($kind:expr, $prod:expr, $a:expr, $b:expr) => {
+        &ORI_SHIFT[$kind][$prod][($a + $b) as usize]
     };
 }
 macro_rules! ori_sub {
-    ($arr:expr, $a:expr, $b:expr) => {{
-        let idx = {
-            if $a > $b {
-                $a - $b
-            } else {
-                $b - $a
-            }
-        };
-        $arr[idx as usize]
+    ($kind:expr, $prod:expr, $a:expr, $b:expr) => {{
+        let idx = { if $a > $b { $a - $b } else { $b - $a } };
+        &ORI_SHIFT[$kind][$prod][idx as usize]
     }};
 }
 macro_rules! add_sub_impl {
-    (base: $op:ident, $op_ori:ident, $perm_op:ident, $ori_op:ident, $Op:path, $OpAssign:path, $op_assign:ident) => {
+    ($op:ident, $op_ori:ident, $perm_op:ident, $ori_op:ident, $Op:path, $OpAssign:path, $op_assign:ident) => {
         #[inline(always)]
         pub fn $op(a: &mut u128, mut b: u128) {
             let kind = a.get_kind();
@@ -120,8 +114,8 @@ macro_rules! add_sub_impl {
                 let idx = (b & mask) as usize;
                 let v = &u128::LUT[idx];
                 *a |= $perm_op!(produced, p.get(v[0] as usize) as usize);
-                *a |= $perm_op!(produced + 1,p.get(v[1] as usize) as usize);
-                *a |= $perm_op!(produced + 2,p.get(v[2] as usize) as usize);
+                *a |= $perm_op!(produced + 1, p.get(v[1] as usize) as usize);
+                *a |= $perm_op!(produced + 2, p.get(v[2] as usize) as usize);
                 produced += 3;
                 b >>= shift;
             }
@@ -130,10 +124,10 @@ macro_rules! add_sub_impl {
                 let tail = (b & ((1 << (rem * 5)) - 1)) as u16;
                 let mask = (1 << 5) - 1;
                 if rem >= 1 {
-                    *a |= $perm_op!(produced,p.get((tail & mask) as usize) as usize);
+                    *a |= $perm_op!(produced, p.get((tail & mask) as usize) as usize);
                 }
                 if rem == 2 {
-                    *a |= $perm_op!(produced + 1,p.get(((tail >> 5) & mask) as usize) as usize);
+                    *a |= $perm_op!(produced + 1, p.get(((tail >> 5) & mask) as usize) as usize);
                 }
             }
         }
@@ -155,7 +149,7 @@ macro_rules! add_sub_impl {
             *a_ori = (kind as u32) << 29;
             b_perm.set_kind(0);
             b_ori.set_kind(0);
-            // let ori_shift = ORI_SHIFT[kind];
+
             let mut produced = 0;
             let full_chunks = count / 3;
             let shift_p = 15;
@@ -163,18 +157,33 @@ macro_rules! add_sub_impl {
             for _ in 0..full_chunks {
                 let idx_p = (b_perm & mask_p) as usize;
                 let idx_o = (b_ori & mask_o) as usize;
-        
+
                 let v_p = &u128::LUT[idx_p];
                 let v_o = &u32::LUT[idx_o];
-                
-                *a_perm |= PERM_SHIFT[produced][p.get(v_p[0] as usize) as usize];
-                *a_perm |= PERM_SHIFT[produced + 1][p.get(v_p[1] as usize) as usize];
-                *a_perm |= PERM_SHIFT[produced + 2][p.get(v_p[2] as usize) as usize];
-        
-                *a_ori |= ORI_SHIFT[kind][produced][(o.get(v_p[0] as usize) + v_o[0]) as usize];
-                *a_ori |= ORI_SHIFT[kind][produced + 1][(o.get(v_p[1] as usize) + v_o[1]) as usize];
-                *a_ori |= ORI_SHIFT[kind][produced + 2][(o.get(v_p[2] as usize) + v_o[2]) as usize];
-                produced +=3;
+
+                *a_perm |= $perm_op!(produced, p.get(v_p[0] as usize) as usize);
+                *a_perm |= $perm_op!(produced + 1, p.get(v_p[1] as usize) as usize);
+                *a_perm |= $perm_op!(produced + 2, p.get(v_p[2] as usize) as usize);
+
+                *a_ori |= $ori_op!(
+                    kind,
+                    produced,
+                    o.get(v_p[0] as usize) as usize,
+                    v_o[0] as usize
+                );
+                *a_ori |= $ori_op!(
+                    kind,
+                    produced + 1,
+                    o.get(v_p[1] as usize) as usize,
+                    v_o[1] as usize
+                );
+                *a_ori |= $ori_op!(
+                    kind,
+                    produced + 2,
+                    o.get(v_p[2] as usize) as usize,
+                    v_o[2] as usize
+                );
+                produced += 3;
                 b_perm >>= shift_p;
                 b_ori >>= shift_o;
             }
@@ -184,16 +193,27 @@ macro_rules! add_sub_impl {
                 let tail_o = (b_ori & ((1 << (rem * 2)) - 1)) as u8;
                 let mask_p = (1 << 5) - 1;
                 let mask_o = (1 << 2) - 1;
-        
+
                 if rem >= 1 {
-                    *a_perm |= PERM_SHIFT[produced][p.get((tail_p & mask_p) as usize) as usize];
-                    *a_ori |= ORI_SHIFT[kind][produced]
-                        [(o.get((tail_p & mask_p) as usize) + (tail_o & mask_o)) as usize];
+                    *a_perm |= $perm_op!(produced, p.get((tail_p & mask_p) as usize) as usize);
+                    *a_ori |= $ori_op!(
+                        kind,
+                        produced,
+                        o.get((tail_p & mask_p) as usize) as usize,
+                        (tail_o & mask_o) as usize
+                    );
                 }
                 if rem == 2 {
-                    *a_perm |= PERM_SHIFT[produced + 1][p.get(((tail_p >> 5) & mask_p) as usize) as usize];
-                    *a_ori |= ORI_SHIFT[kind][produced + 1]
-                        [(o.get(((tail_p >> 5) & mask_p) as usize) + (tail_o >> 2) & mask_o) as usize];
+                    *a_perm |= $perm_op!(
+                        produced + 1,
+                        p.get(((tail_p >> 5) & mask_p) as usize) as usize
+                    );
+                    *a_ori |= $ori_op!(
+                        kind,
+                        produced + 1,
+                        o.get(((tail_p >> 5) & mask_p) as usize) as usize,
+                        ((tail_o >> 2) & mask_o) as usize
+                    );
                 }
             }
         }
@@ -217,7 +237,7 @@ macro_rules! add_sub_impl {
                 let a_perm = unsafe { &mut *p_a_p.add(idx) };
                 let b_perm = unsafe { *p_b_p.add(idx) };
                 idx += 1;
-                $op_ori(a_perm, &mut self.ori[0],b_perm, rhs.ori[0], 0);
+                $op_ori(a_perm, &mut self.ori[0], b_perm, rhs.ori[0], 0);
 
                 if self.perm.len() > 1 {
                     let a_perm = unsafe { &mut *p_a_p.add(idx) };
@@ -233,103 +253,10 @@ macro_rules! add_sub_impl {
             }
         }
     };
-    () => {
-        add_sub_impl!(base: add, sum_ori, perm_add, ori_add, Add<&CubeState>, AddAssign<&CubeState>, add_assign);
-        add_sub_impl!(base: sub, sub_ori, perm_sub, ori_sub, Sub<&CubeState>, SubAssign<&CubeState>, sub_assign);
-    };
 }
+add_sub_impl!(add, sum_ori, perm_add, ori_add, Add<&CubeState>, AddAssign<&CubeState>, add_assign);
+add_sub_impl!(sub, sub_ori, perm_sub, ori_sub, Sub<&CubeState>, SubAssign<&CubeState>, sub_assign);
 
-#[inline(always)]
-pub fn from_perm_ori_to_slice(
-    a_perm: &mut u128,
-    mut b_perm: u128,
-    a_ori: &mut u32,
-    mut b_ori: u32,
-    kind: usize,
-) {
-    let count = NUM_PER_KIND[kind];
-    let mask_p = (1 << 15) - 1;
-    let mask_o = (1 << 6) - 1;
-    let p = *a_perm;
-    let o = *a_ori;
-    *a_perm = (kind as u128) << 125;
-    *a_ori = (kind as u32) << 29;
-    b_perm.set_kind(0);
-    b_ori.set_kind(0);
-    let ori_shift = ORI_SHIFT[kind];
-    let mut produced = 0;
-    let full_chunks = count / 3;
-    let shift_p = 15;
-    let shift_o = 6;
-    for _ in 0..full_chunks {
-        let idx_p = (b_perm & mask_p) as usize;
-        let idx_o = (b_ori & mask_o) as usize;
-
-        let v_p = u128::LUT[idx_p];
-        let v_o = u32::LUT[idx_o];
-        *a_perm |= PERM_SHIFT[produced][p.get(v_p[0] as usize) as usize];
-        *a_perm |= PERM_SHIFT[produced + 1][p.get(v_p[1] as usize) as usize];
-        *a_perm |= PERM_SHIFT[produced + 2][p.get(v_p[2] as usize) as usize];
-
-        *a_ori |= ori_shift[produced][(o.get(v_p[0] as usize) + v_o[0]) as usize];
-        *a_ori |= ori_shift[produced + 1][(o.get(v_p[1] as usize) + v_o[1]) as usize];
-        *a_ori |= ori_shift[produced + 2][(o.get(v_p[2] as usize) + v_o[2]) as usize];
-        produced += 3;
-        b_perm >>= shift_p;
-        b_ori >>= shift_o;
-    }
-    let rem = count - produced;
-    if rem != 0 {
-        let tail_p = (b_perm & ((1 << (rem * 5)) - 1)) as u16;
-        let tail_o = (b_ori & ((1 << (rem * 2)) - 1)) as u8;
-        let mask_p = (1 << 5) - 1;
-        let mask_o = (1 << 2) - 1;
-
-        if rem >= 1 {
-            *a_perm |= PERM_SHIFT[produced][p.get((tail_p & mask_p) as usize) as usize];
-            *a_ori |= ori_shift[produced]
-                [(o.get((tail_p & mask_p) as usize) + (tail_o & mask_o)) as usize];
-        }
-        if rem == 2 {
-            *a_perm |= PERM_SHIFT[produced + 1][p.get(((tail_p >> 5) & mask_p) as usize) as usize];
-            *a_ori |= ori_shift[produced + 1]
-                [(o.get(((tail_p >> 5) & mask_p) as usize) + (tail_o >> 2) & mask_o) as usize];
-        }
-    }
-}
-#[inline(always)]
-pub fn from_perm_to_slice(a: &mut u128, mut b: u128) {
-    let kind = a.get_kind();
-    let count = NUM_PER_KIND[kind];
-    let mask = (1 << (15)) - 1;
-    let p = *a;
-    *a = (kind as u128) << 125;
-    b.set_kind(0);
-    let mut produced = 0;
-    let full_chunks = count / 3;
-    let shift = 15;
-    for _ in 0..full_chunks {
-        let idx = (b & mask) as usize;
-        let v = u128::LUT[idx];
-        *a |= PERM_SHIFT[produced][p.get(v[0] as usize) as usize];
-        *a |= PERM_SHIFT[produced + 1][p.get(v[1] as usize) as usize];
-        *a |= PERM_SHIFT[produced + 2][p.get(v[2] as usize) as usize];
-        produced += 3;
-        b >>= shift;
-    }
-    let rem = count - produced;
-    if rem != 0 {
-        let tail = (b & ((1 << (rem * 5)) - 1)) as u16;
-        let mask = (1 << 5) - 1;
-        if rem >= 1 {
-            *a |= PERM_SHIFT[produced][p.get((tail & mask) as usize) as usize];
-        }
-        if rem == 2 {
-            *a |= PERM_SHIFT[produced + 1][p.get(((tail >> 5) & mask) as usize) as usize];
-        }
-    }
-    // u32::LUT.get
-}
 pub trait Bit<T> {
     const SHIFT: [T; 24];
     const MASK_SET: [T; 24];
@@ -502,4 +429,3 @@ macro_rules! bit_impl {
 }
 bit_impl!(u128, 5, 125, 24);
 bit_impl!(u32, 2, 29, 12);
-add_sub_impl!();
