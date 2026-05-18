@@ -1,0 +1,15 @@
+[package]
+name = "cube_ops"
+version = "0.0.0"
+edition = "2018"
+autotests = false
+publish = false
+
+[lib]
+proc-macro = true
+
+[dependencies]
+# syn = { version = "0.15", features = ["extra-traits"] }
+proc-macro2 = "1.0.106"
+quote = "1.0.44"
+syn = { version = "2.0.114", features = ["full"] }
