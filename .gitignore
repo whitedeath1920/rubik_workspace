@@ -2,3 +2,6 @@
 target/*
 *.txt
 *.zip
+.vs
+*.data
+*.svg
