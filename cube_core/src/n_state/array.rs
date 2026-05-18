@@ -10,27 +10,27 @@ use core::{
     slice,
 };
 
-#[repr(C)]
+#[repr(C, align(16))]
 #[derive(Debug)]
-pub struct Array<const ALIGN: usize = 64> {
+pub struct Array {
     ptr: NonNull<u128>,
     len: usize,
 }
 
-impl<const ALIGN: usize> Array<ALIGN> {
+impl Array {
     #[inline(always)]
     fn layout_for(len: usize) -> Layout {
-        debug_assert!(len > 1);
-        let align = ALIGN.max(align_of::<u128>());
+        debug_assert!(len >= 1);
+        let align = align_of::<u128>();
         debug_assert!(align.is_power_of_two());
         let size = len.checked_mul(size_of::<u128>()).expect("size overflow");
         unsafe { Layout::from_size_align_unchecked(size, align) }
     }
     #[inline(always)]
     pub fn with_capacity(len: usize) -> Self {
-        debug_assert!(len > 1);
+        debug_assert!(len >= 1);
         unsafe {
-            let layout = Array::<ALIGN>::layout_for(len);
+            let layout = Self::layout_for(len);
             let raw = alloc(layout) as *mut u128;
             if raw.is_null() {
                 handle_alloc_error(layout);
@@ -42,10 +42,17 @@ impl<const ALIGN: usize> Array<ALIGN> {
         }
     }
     #[inline(always)]
+    pub fn write(&mut self, index: usize, value: u128) {
+        debug_assert!(index < self.len);
+        unsafe {
+            self.ptr.add(index).write(value);
+        }
+    }
+    #[inline(always)]
     pub fn zeroed(len: usize) -> Self {
         debug_assert!(len > 1);
         unsafe {
-            let layout = Array::<ALIGN>::layout_for(len);
+            let layout = Self::layout_for(len);
             let raw = alloc_zeroed(layout) as *mut u128;
             if raw.is_null() {
                 handle_alloc_error(layout);
@@ -56,19 +63,16 @@ impl<const ALIGN: usize> Array<ALIGN> {
             }
         }
     }
+
     #[inline(always)]
     pub fn get(&self, index: usize) -> u128 {
         debug_assert!(index < self.len);
-        unsafe {
-            *self.ptr.as_ptr().add(index)
-        }
+        unsafe { *self.ptr.as_ptr().add(index) }
     }
     #[inline(always)]
     pub fn get_mut(&mut self, index: usize) -> &mut u128 {
         debug_assert!(index < self.len);
-        unsafe {
-            &mut *self.ptr.as_ptr().add(index)
-        }
+        unsafe { &mut *self.ptr.as_ptr().add(index) }
     }
     #[inline(always)]
     pub fn iter(&self) -> Iter<'_> {
@@ -81,7 +85,11 @@ impl<const ALIGN: usize> Array<ALIGN> {
             }
         }
     }
-
+    #[inline(always)]
+    pub fn fill(&mut self, val: u128, start: usize, count: usize) {
+        let slc = unsafe { slice::from_raw_parts_mut(self.as_mut_ptr().add(start), count) };
+        slc.fill(val);
+    }
     #[inline(always)]
     pub fn iter_mut(&mut self) -> IterMut<'_> {
         let p = self.as_mut_ptr();
@@ -170,7 +178,7 @@ impl<'a> Iterator for IterMut<'a> {
     }
 }
 
-impl<const ALIGN: usize> PartialEq for Array<ALIGN> {
+impl PartialEq for Array {
     #[inline(always)]
     fn eq(&self, other: &Self) -> bool {
         if self.len() != other.len() {
@@ -185,7 +193,7 @@ impl<const ALIGN: usize> PartialEq for Array<ALIGN> {
     }
 }
 
-impl<const ALIGN: usize> Clone for Array<ALIGN> {
+impl Clone for Array {
     #[inline(always)]
     fn clone(&self) -> Self {
         let mut out = Self::with_capacity(self.len());
@@ -196,11 +204,11 @@ impl<const ALIGN: usize> Clone for Array<ALIGN> {
     }
 }
 
-impl<const ALIGN: usize> Drop for Array<ALIGN> {
+impl Drop for Array {
     #[inline(always)]
     fn drop(&mut self) {
         unsafe {
-            let layout = Array::<ALIGN>::layout_for(self.len);
+            let layout = Self::layout_for(self.len);
             dealloc(self.ptr.as_ptr() as *mut u8, layout);
         }
     }

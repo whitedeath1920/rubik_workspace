@@ -141,6 +141,7 @@ macro_rules! add_sub_impl {
             kind: usize,
         ) {
             let count = NUM_PER_KIND[kind];
+            
             let mask_p = (1 << 15) - 1;
             let mask_o = (1 << 6) - 1;
             let p = *a_perm;

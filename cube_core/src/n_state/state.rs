@@ -1,3 +1,5 @@
+use std::{ptr, ops::Range};
+
 use crate::{
     CubeError,
     error::Result,
@@ -43,19 +45,18 @@ impl CubeState {
     pub fn unchecked_new(dimension: usize) -> Self {
         let dim_mod_2 = dimension & 1;
         let tmp1 = (dimension - 2 - dim_mod_2) >> 1;
-        let orbits = [1, dim_mod_2, dim_mod_2, tmp1.pow(2), tmp1, tmp1 * dim_mod_2];
-
-        let mut perm = Array::with_capacity(Self::len(dimension));
+        let orbits = [1,dim_mod_2, dim_mod_2, tmp1.pow(2), tmp1, tmp1 * dim_mod_2];
+        let len = (dimension.pow(2) + 5 * (dimension & 1) - 2 * dimension + 4) / 4;      
+        
+        let mut perm = Array::with_capacity(len);
         
         let mut idx = 0;
-        let p = perm.as_mut_ptr();
         orbits.iter().zip(IDENTITY_PERM).for_each(|(&len, value)| {
             for index in idx..idx + len {
-                unsafe { *p.add(index) = value; }
+                perm.write(index, value);
             }
             idx += len;
         });
-
         Self {
             perm,
             ori: [0, 1 << 29],
