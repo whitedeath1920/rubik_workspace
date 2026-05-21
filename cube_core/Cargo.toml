@@ -9,3 +9,6 @@ criterion = "0.8.1"
 [[bench]]
 name = "ben"
 harness = false
+
+[dependencies]
+cube_ops = { path = "../cube_ops" }

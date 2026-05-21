@@ -1,23 +1,17 @@
 [workspace]
 resolver = "3"
 # members = [ "cube_core", "cube_cli", "cube_methods" ]
-members = [ "cube_core" ]
+members = [ "cube_core" , "cube_ops"]
 
 
 [profile.release]
-# opt-level = 3
-# lto = true
-# codegen-units = 1
-# panic = "abort"
-# strip = "symbols"
-debug = true
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
+# debug = true
 
 [profile.bench]
-# opt-level = 3
-# lto = true
-# codegen-units = 1
-# strip = "symbols"
 debug = true
 
-[workspace.dependencies]
-# criterion = "0.8.1"

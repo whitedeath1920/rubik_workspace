@@ -1,6 +1,6 @@
 use crate::{
     moves::{LayerSpec, Move, MoveKind},
-    state::{Bit, CubeState},
+    state::{CubeState},
 };
 
 fn map_perm_vect(dimension: usize, kind: usize, index: i32, mut vect: &mut Vec<[i32; 3]>) {
