@@ -1,5 +1,7 @@
 use core::fmt;
 
+use crate::{CubeError, error::Result};
+
 #[repr(C, align(64))]
 #[derive(Debug, Clone, Copy)]
 /// Contains de especific layout of the cube for initializing \
@@ -17,6 +19,13 @@ pub struct Layout {
 }
 
 impl Layout {
+    pub fn checked_new(n: usize) -> Result<Self> {
+        if n < 2 || n > 4292967296 {
+            Err(CubeError::InvalidDimension { got: n })
+        } else {
+            Ok(Self::new(n))
+        }
+    }
     /// Creates a new `Layout` from a given number of layers
     pub fn new(n: usize) -> Self {
         assert!(n > 1, "Expected at least \"2\", got {n}");

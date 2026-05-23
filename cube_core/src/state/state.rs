@@ -62,9 +62,7 @@ impl<'a> CubeState<'a> {
     /// Data layout for the cube state.
     #[inline]
     fn data_layout(len: usize) -> alloc::Layout {
-        let align = align_of::<u128>();
-        let size = len.checked_mul(size_of::<u128>()).expect("size overflow");
-        unsafe { alloc::Layout::from_size_align_unchecked(size, align) }
+        alloc::Layout::array::<u128>(len).expect("Alloctaion size overflow")    
     }
     /// Creates a new cube state with the given layout.
     #[inline]
@@ -212,16 +210,16 @@ impl<'a> CubeState<'a> {
                 m *= 2;
             }
         }
-        
+
         m
     }
     pub fn check(&self) -> Result<()> {
         orientation_check(self.corner as u128, BIT_PACKING[0], 3)?;
-        
+
         if self.layout.n & 1 == 1 {
             orientation_check(self.get(0), BIT_PACKING[1], 2)?;
         }
-        
+
         let mut parity = false;
         for a in self.cycle_decomposition() {
             let mut odd = false;
@@ -272,8 +270,6 @@ impl<'a> Drop for CubeState<'a> {
 }
 impl<'a> Debug for CubeState<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "{}", self)?;
-        return Ok(());
         writeln!(f, "[")?;
         writeln!(f, "\t[{}]", self.corner)?;
         for i in 0..self.layout.len {
@@ -666,7 +662,7 @@ fn orientation_check(
     value: u128,
     (ori, perm, len, shift): (u128, u128, usize, u128),
     mod_: u128,
-) -> Result<()> 
+) -> Result<()>
 {
     if (0..len as u128).map(|i| {
         let o = (value >> (i * 5 + shift)) & ori;
