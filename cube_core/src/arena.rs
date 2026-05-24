@@ -42,10 +42,10 @@ pub struct CubeArena {
     orbit: [(u16, u16); 3],
     /// Number of packed arrays per cube
     pub stride: u16,
-    /// Dimensions of the cube.
-    n: u8,
     /// number of orbits in cube
     len_orbits: u16,
+    /// Dimensions of the cube.
+    n: u8,
 }
 
 impl CubeArena {
@@ -99,13 +99,13 @@ impl CubeArena {
         let cube = self.get_cube(index);
         let mut result = Vec::with_capacity(self.len_orbits as usize);
 
-        result.push(unpack_u128(get_corner(cube[0]) as u128, BIT_PACKING[0]));
+        result.push(unpack_u128::<3, 7, 8, 3>(get_corner(cube[0]) as u128));
         if self.n & 1 == 1 {
-            result.push(unpack_u128(get_edge(cube[0]) as u128, BIT_PACKING[1]));
-            result.push(unpack_u128(get_center(cube[0]) as u128, BIT_PACKING[2]));
+            result.push(unpack_u128::<2, 15, 12, 4>(get_edge(cube[0]) as u128));
+            result.push(unpack_u128::<0, 31, 6, 5>(get_center(cube[0]) as u128));
         }
         for i in 1..self.stride as usize {
-            result.push(unpack_u128(cube[i], BIT_PACKING[3]));
+            result.push(unpack_u128::<0, 31, 24, 5>(cube[i]));
         }
         result
     }
@@ -117,16 +117,16 @@ impl CubeArena {
 
         let c = self.get_cube_mut(index);
         let mut offset = 1;
-        let mut block = pack_u128(&cube[0], BIT_PACKING[0]);
+        let mut block = pack_u128::<8, 3>(&cube[0]);
         if n & 1 == 1 {
-            block |= pack_u128(&cube[1], BIT_PACKING[1]) << 40;
-            block |= pack_u128(&cube[2], BIT_PACKING[2]) << 100;
+            block |= pack_u128::<12, 4>(&cube[1]) << 40;
+            block |= pack_u128::<6, 5>(&cube[2]) << 100;
             offset = 3;
         }
         c[0] = block;
 
         for (orbit, vect) in c[1..].iter_mut().zip(cube[offset..].iter()) {
-            *orbit = pack_u128(vect, BIT_PACKING[3]);
+            *orbit = pack_u128::<24, 5>(vect);
         }
     }
     #[inline(always)]
@@ -282,16 +282,16 @@ impl CubeArena {
 
         println!(
             "Corner: {:?}",
-            unpack_u128(get_corner(cube[0]) as u128, BIT_PACKING[0])
+            unpack_u128::<3, 7, 8, 3>(get_corner(cube[0]) as u128)
         );
         if self.n & 1 == 1 {
             println!(
                 "Edge: {:?}",
-                unpack_u128(get_edge(cube[0]) as u128, BIT_PACKING[1])
+                unpack_u128::<1, 15, 12, 4>(get_edge(cube[0]) as u128)
             );
             println!(
                 "Center: {:?}",
-                unpack_u128(get_center(cube[0]) as u128, BIT_PACKING[2])
+                unpack_u128::<0, 31, 6, 5>(get_center(cube[0]) as u128)
             );
         }
         let name = ["Par Center", "Par Edge", "Par Corner"];
@@ -300,7 +300,7 @@ impl CubeArena {
                 .iter()
                 .enumerate()
             {
-                println!("{} {}: {:?}", n, i, unpack_u128(val, BIT_PACKING[3]));
+                println!("{} {}: {:?}", n, i, unpack_u128::<0, 31, 24, 5>(val));
             }
         }
     }
@@ -311,10 +311,13 @@ impl CubeArena {
         let mut _12: [(u8, u8); 12] = std::array::from_fn(|i| (i as u8, 0));
         let mut _24: [(u8, u8); 24] = std::array::from_fn(|i| (i as u8, 0));
 
+        let mut par = false;
         let stride = self.stride;
         let n = self.n;
         let cube = self.cube_mut_ptr(index);
-        _8.shuffle(rng);
+
+        par ^= shuffle(&mut _8, rng);
+
         let mut ori_sum = 0;
         for i in 0..7 {
             let ori = rng.random_range(0..3);
@@ -323,10 +326,10 @@ impl CubeArena {
         }
 
         _8[7].1 = (3 - (ori_sum % 3)) % 3;
-        let mut block = pack_u128(&_8, BIT_PACKING[0]);
+        let mut block = pack_u128::<8, 3>(&_8);
 
         if n & 1 == 1 {
-            _12.shuffle(rng);
+            par ^= shuffle(&mut _12, rng);
             ori_sum = 0;
             for i in 0..11 {
                 let ori = rng.random::<bool>() as u8;
@@ -335,18 +338,18 @@ impl CubeArena {
             }
             _12[11].1 = ori_sum;
 
-            block |= pack_u128(&_12, BIT_PACKING[1]) << 40;
-            _6.shuffle(rng);
-            block |= pack_u128(&_6, BIT_PACKING[2]) << 100;
+            block |= pack_u128::<12, 4>(&_12) << 40;
+            par ^= shuffle(&mut _6, rng);
+            block |= pack_u128::<6, 5>(&_6) << 100;
         }
         unsafe {
             *cube = block;
             for i in 1..stride as usize {
-                _24.shuffle(rng);
-                *cube.add(i) = pack_u128(&_24, BIT_PACKING[3]);
+                par ^= shuffle(&mut _24, rng);
+                *cube.add(i) = pack_u128::<24, 5>(&_24);
             }
 
-            if self.check_cube(index).is_err() {
+            if par {
                 block = add_8(get_corner(*cube), 247132686337);
                 *cube &= !((1 << 40) - 1);
                 *cube |= block;
@@ -357,42 +360,50 @@ impl CubeArena {
         debug_assert!(index < self.len + 2);
         let mut vect = Vec::with_capacity((self.stride as u8 + 2 * (self.n & 1)) as usize);
         let cube = self.get_cube(index);
-        vect.push(cycle_decomp(get_corner(cube[0]) as u128, BIT_PACKING[0]));
+        vect.push(cycle_decomp::<7, 8>(get_corner(cube[0]) as u128));
 
         if self.n & 1 == 1 {
-            vect.push(cycle_decomp(get_edge(cube[0]) as u128, BIT_PACKING[1]));
-            vect.push(cycle_decomp(get_center(cube[0]) as u128, BIT_PACKING[2]));
+            vect.push(cycle_decomp::<15, 12>(get_edge(cube[0]) as u128));
+            vect.push(cycle_decomp::<31, 6>(get_center(cube[0]) as u128));
         }
         for i in 1..self.stride as usize {
-            vect.push(cycle_decomp(cube[i], BIT_PACKING[3]));
+            vect.push(cycle_decomp::<31, 24>(cube[i]));
         }
         vect
     }
     pub fn check_cube(&mut self, index: usize) -> Result<()> {
         debug_assert!(index < self.len + 2);
-        let mut parity = false;
+        let mut par = false;
 
-        for a in self.cycle_decomposition_cube(index) {
-            for b in a {
-                parity ^= b.len() % 2 == 0;
-            }
+        let cube = self.get_cube(index);
+        par ^= parity::<7, 8>(get_corner(cube[0]) as u128);
+
+        if self.n & 1 == 1 {
+            par ^= parity::<15, 12>(get_edge(cube[0]) as u128);
+            par ^= parity::<31, 6>(get_center(cube[0]) as u128);
         }
-        if parity {
+        for i in 1..self.stride as usize {
+            par ^= parity::<31, 24>(cube[i]);
+        }
+
+        if par {
             return Err(CubeError::InvalidPermutation);
         }
         let block = self.data[index * self.stride as usize];
-        orientation_check(get_corner(block) as u128, BIT_PACKING[0], 3)?;
-        orientation_check(get_edge(block) as u128, BIT_PACKING[1], 2)?;
+        orientation_check::<3, 7, 8, 3, 3>(get_corner(block) as u128)?;
+        orientation_check::<1, 15, 12, 4, 2>(get_edge(block) as u128)?;
         Ok(())
     }
 }
 #[inline(always)]
-fn unpack_u128(value: u128, (ori, perm, len, shift): (u128, u128, usize, u128)) -> Vec<(u8, u8)> {
-    let mut vect: Vec<(u8, u8)> = Vec::with_capacity(len);
-    for i in 0..len {
+fn unpack_u128<const ORI: u128, const PERM: u128, const LEN: usize, const SHIFT: u32>(
+    value: u128,
+) -> Vec<(u8, u8)> {
+    let mut vect: Vec<(u8, u8)> = Vec::with_capacity(LEN);
+    for i in 0..LEN {
         let block = (value >> (i * 5)) & 31;
-        let p = (block & perm) as u8;
-        let o = ((block >> shift) & ori) as u8;
+        let p = (block & PERM) as u8;
+        let o = ((block >> SHIFT) & ORI) as u8;
 
         vect.push((p, o));
     }
@@ -400,10 +411,11 @@ fn unpack_u128(value: u128, (ori, perm, len, shift): (u128, u128, usize, u128)) 
     vect
 }
 #[inline(always)]
-pub fn pack_u128(vect: &[(u8, u8)], (_, _, _, shift): (u128, u128, usize, u128)) -> u128 {
+pub fn pack_u128<const LEN: usize, const SHIFT: u32>(slice: &[(u8, u8)]) -> u128 {
+    debug_assert!(slice.len() == LEN);
     let mut value = 0u128;
-    for (i, &(p, o)) in vect.iter().enumerate() {
-        let block = (p as u128) | ((o as u128) << shift);
+    for (i, &(p, o)) in slice.iter().enumerate() {
+        let block = (p as u128) | ((o as u128) << SHIFT);
         value |= block << (i * 5);
     }
     value
@@ -587,11 +599,11 @@ pub fn sub_24(mut a: u128, mut b: u128) -> u128 {
     p
 }
 #[inline]
-fn cycle_decomp(value: u128, (_, perm, len, _): (u128, u128, usize, u128)) -> Vec<Vec<usize>> {
+fn cycle_decomp<const PERM: u128, const LEN: usize>(value: u128) -> Vec<Vec<usize>> {
     let mut seen = [false; 24];
-    let mut out = Vec::with_capacity(len >> 1);
-    let mut cycle = Vec::with_capacity(len >> 1);
-    for start in 0..len {
+    let mut out = Vec::with_capacity(LEN >> 1);
+    let mut cycle = Vec::with_capacity(LEN >> 1);
+    for start in 0..LEN {
         if seen[start] {
             continue;
         }
@@ -606,33 +618,60 @@ fn cycle_decomp(value: u128, (_, perm, len, _): (u128, u128, usize, u128)) -> Ve
             seen[j] = true;
             cycle.push(j);
 
-            j = ((value >> (j * 5)) & perm) as usize;
+            j = ((value >> (j * 5)) & PERM) as usize;
         }
         if cycle.len() > 1 {
-            out.push(std::mem::replace(&mut cycle, Vec::with_capacity(len >> 1)));
+            out.push(std::mem::replace(&mut cycle, Vec::with_capacity(LEN >> 1)));
         }
     }
-
     out
 }
 #[inline]
-fn orientation_check(
+pub fn parity<const PERM: u128, const LEN: usize>(value: u128) -> bool {
+    let mut visited: u64 = 0;
+    let mut cycles = 0;
+
+    for i in 0..LEN {
+        if (visited & (1 << i)) == 0 {
+            cycles += 1;
+
+            let mut j = i;
+
+            loop {
+                if (visited & (1 << j)) != 0 {
+                    break;
+                }
+
+                visited |= 1 << j;
+                j = ((value >> (j * 5)) & PERM) as usize;
+            }
+        }
+    }
+
+    ((LEN - cycles) & 1) != 0
+}
+#[inline]
+fn orientation_check<
+    const ORI: u128,
+    const PERM: u128,
+    const LEN: usize,
+    const SHIFT: u32,
+    const MOD: u128,
+>(
     value: u128,
-    (ori, perm, len, shift): (u128, u128, usize, u128),
-    mod_: u128,
 ) -> Result<()> {
-    if (0..len as u128)
+    if (0..LEN as u128)
         .map(|i| {
-            let o = (value >> (i * 5 + shift)) & ori;
+            let o = (value >> (i * 5 + SHIFT as u128)) & ORI;
             o
         })
         .sum::<u128>()
-        % mod_
+        % MOD
         != 0
     {
         return Err(CubeError::InvalidOrientation {
-            got: unpack_u128(value, (ori, perm, len, shift)),
-            mod_: mod_ as usize,
+            got: unpack_u128::<ORI, PERM, LEN, SHIFT>(value),
+            mod_: MOD as usize,
         });
     }
     Ok(())
@@ -672,4 +711,16 @@ pub fn gcd(mut u: usize, mut v: usize) -> usize {
 #[inline]
 pub fn mcm(u: usize, v: usize) -> usize {
     (u * v) / gcd(u, v)
+}
+#[inline]
+pub fn shuffle(slice: &mut [(u8, u8)], rng: &mut impl rand::Rng) -> bool {
+    let mut parity = false;
+    for i in (1..slice.len()).rev() {
+        let j = rng.random_range(0..=i);
+        if i != j {
+            parity = !parity;
+            slice.swap(i, j);
+        }
+    }
+    parity
 }
