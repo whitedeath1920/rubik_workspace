@@ -1,3 +1,5 @@
+use std::ops::{BitAnd, Shr, ShrAssign};
+
 use rand::{RngExt, seq::SliceRandom};
 
 use crate::{CubeError, error::Result};
@@ -159,15 +161,15 @@ impl CubeArena {
             let c_b = self.cube_ptr(b);
             let c_c = self.cube_mut_ptr(c);
 
-            let mut block = add_8(get_corner(*c_a), get_corner(*c_b));
+            let mut block = add_ori::<7,40,3,4>(get_corner(*c_a), get_corner(*c_b));
             if self.n & 1 == 1 {
-                block |= add_12(get_edge(*c_a), get_edge(*c_b)) << 40;
-                block |= add_6(get_center(*c_a), get_center(*c_b)) << 100;
+                block |= add_ori::<15,4,60,2>(get_edge(*c_a), get_edge(*c_b)) << 40;
+                block |= add_perm::<2>(get_center(*c_a), get_center(*c_b)) << 100;
             }
             *c_c = block;
 
             for a in 1..self.stride as usize {
-                *c_c.add(a) = add_24(*c_a.add(a), *c_b.add(a));
+                *c_c.add(a) = add_perm::<8>(*c_a.add(a), *c_b.add(a));
             }
         }
     }
@@ -194,7 +196,7 @@ impl CubeArena {
             let mut block = sub_8(get_corner(*c_a), get_corner(*c_b));
             if self.n & 1 == 1 {
                 block |= sub_12(get_edge(*c_a), get_edge(*c_b)) << 40;
-                block |= sub_6(get_center(*c_a), get_center(*c_b)) << 100;
+                // block |= sub_6(get_center(*c_a), get_center(*c_b)) << 100;
             }
             *c_c = block;
 
@@ -224,7 +226,7 @@ impl CubeArena {
             let mut block = sub_8(247132686368, get_corner(*c_a));
             if self.n & 1 == 1 {
                 block |= sub_12(407901468851537952, get_edge(*c_a)) << 40;
-                block |= sub_6(172066848, get_center(*c_a)) << 100;
+                // block |= sub_6(172066848, get_center(*c_a)) << 100;
             }
             *c_c = block;
 
@@ -350,7 +352,7 @@ impl CubeArena {
             }
 
             if par {
-                block = add_8(get_corner(*cube), 247132686337);
+                block = add_ori::<7,40,3,3>(get_corner(*cube), 247132686337);
                 *cube &= !((1 << 40) - 1);
                 *cube |= block;
             }
@@ -429,8 +431,8 @@ fn get_edge(a: u128) -> u64 {
     ((a >> 40) & ((1 << 60) - 1)) as u64
 }
 #[inline(always)]
-fn get_center(a: u128) -> u64 {
-    (a >> 100) as u64
+fn get_center(a: u128) -> u128 {
+    a >> 100
 }
 #[inline(always)]
 fn add_6(a: u64, mut b: u64) -> u128 {
@@ -452,56 +454,30 @@ fn add_6(a: u64, mut b: u64) -> u128 {
     }
     p as u128
 }
-#[inline(always)]
-fn add_8(a: u64, b: u64) -> u128 {
-    if 247132686368 == b {
-        return a as u128;
-    }
+
+#[inline]
+fn add_ori<const PERM: u64,const LEN: u8, const SHIFT: u64, const MOD: u64>(a: u64, b: u64) -> u128 {
     let mut out = 0;
-    for shift in (0..40).step_by(5) {
+    for shift in (0..LEN).step_by(5) {
         let b_block = (b >> shift) & 31;
-        let b_perm = (b_block & 7) * 5;
-        let b_ori = b_block >> 3;
+        let b_perm = (b_block & PERM) * 5;
+        let b_ori = b_block >> SHIFT;
 
         let a_block = (a >> b_perm) & 31;
-        let a_perm = a_block & 7;
-        let a_ori = a_block >> 3;
+        let a_perm = a_block & PERM;
+        let a_ori = a_block >> SHIFT;
 
-        let new_ori = ((b_ori + a_ori) % 3) << 3;
+        let new_ori = ((b_ori + a_ori) % MOD) << SHIFT;
         out |= (a_perm | new_ori) << shift;
     }
+
     out as u128
 }
-#[inline(always)]
-fn add_12(a: u64, b: u64) -> u128 {
-    if 407901468851537952 == b {
-        return a as u128;
-    }
-    let mut out = 0;
-    for shift in (0..60).step_by(5) {
-        let b_block = (b >> shift) & 31;
-        let b_perm = (b_block & 15) * 5;
-        let b_ori = b_block >> 4;
-
-        let a_block = (a >> b_perm) & 31;
-        let a_perm = a_block & 15;
-        let a_ori = a_block >> 4;
-
-        let new_ori = ((b_ori + a_ori) & 1) << 4;
-        out |= (a_perm | new_ori) << shift;
-    }
-    out as u128
-}
-#[inline(always)]
-pub fn add_24(a: u128, mut b: u128) -> u128 {
-    if 984818244535754528103549039458486304 == b {
-        return a;
-    }
-
+#[inline]
+fn add_perm<const LEN: u8>(a: u128, mut b: u128) -> u128 {
     let mut p = 0;
     let mut produced = 0;
-
-    for _ in 0..8 {
+    for _ in 0..LEN {
         let idx = (b & ((1 << (15)) - 1)) as usize;
         let v = &LUT[idx];
         let p1 = PERM_SHIFT[produced][((a >> (v[0] * 5)) as usize) & 0b11111];
@@ -511,7 +487,7 @@ pub fn add_24(a: u128, mut b: u128) -> u128 {
         b >>= 15;
         p |= p1 | p2 | p3;
     }
-    p as u128
+    p 
 }
 #[inline(always)]
 pub fn sub_6(mut a: u64, mut b: u64) -> u128 {
