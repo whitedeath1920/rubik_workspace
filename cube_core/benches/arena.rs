@@ -8,14 +8,12 @@ use criterion::{
     Criterion,
 };
 
-use cube_core::arena::*;
+use cube_core::{CubeArena, arena::{Piece24, add_perm, sub_perm}};
 use rand::{RngExt, SeedableRng, rngs::SmallRng};
 use std::{hint::black_box, time::Duration};
 
 const DIMS: [usize; 12] = [2,3,4,5,8,16,32,64,96,128,192,255];
-// ============================================================
-// RANDOMIZATION COST
-// ============================================================
+// const DIMS: [usize; 6] = [4,5,6,10,11,12];
 
 fn bench_random_cube(c: &mut Criterion) {
 
@@ -47,9 +45,6 @@ fn bench_random_cube(c: &mut Criterion) {
 
     group.finish();
 }
-// ============================================================
-// VALIDITY CHECK COST
-// ============================================================
 
 fn bench_check_cube(c: &mut Criterion) {
 
@@ -74,7 +69,7 @@ fn bench_check_cube(c: &mut Criterion) {
 
                 b.iter(|| {
 
-                    let _ = black_box(arena.check_cube(0));
+                    let _ = black_box(arena.is_solvable(0));
 
                 });
             },
@@ -83,9 +78,6 @@ fn bench_check_cube(c: &mut Criterion) {
 
     group.finish();
 }
-// ============================================================
-// RANDOMIZED ADD/SUB
-// ============================================================
 
 fn bench_randomized_add_sub(c: &mut Criterion) {
     let mut group = c.benchmark_group("randomized_add_sub");
@@ -102,17 +94,9 @@ fn bench_randomized_add_sub(c: &mut Criterion) {
 
         let mut rng = SmallRng::seed_from_u64(12345);
 
-        // ----------------------------------------
-        // Generate random cubes
-        // ----------------------------------------
-
         for i in 0..CUBES {
             arena.random_cube(i, &mut rng);
         }
-
-        // ----------------------------------------
-        // Pre-generate random indices
-        // ----------------------------------------
 
         let indices: Vec<(usize, usize)> =
             (0..100_000)
@@ -123,10 +107,6 @@ fn bench_randomized_add_sub(c: &mut Criterion) {
                     )
                 })
                 .collect();
-
-        // ----------------------------------------
-        // ADD
-        // ----------------------------------------
 
         group.bench_with_input(
             BenchmarkId::new("random_add", n),
@@ -149,10 +129,6 @@ fn bench_randomized_add_sub(c: &mut Criterion) {
                 });
             },
         );
-
-        // ----------------------------------------
-        // SUB
-        // ----------------------------------------
 
         group.bench_with_input(
             BenchmarkId::new("random_sub", n),
@@ -179,9 +155,7 @@ fn bench_randomized_add_sub(c: &mut Criterion) {
 
     group.finish();
 }
-// ============================================================
-// PURE add/sub arithmetic
-// ============================================================
+
 
 fn bench_add_scaling(c: &mut Criterion) {
     let mut group = c.benchmark_group("add_scaling");
@@ -193,7 +167,7 @@ fn bench_add_scaling(c: &mut Criterion) {
     for n in DIMS {
         let mut arena = CubeArena::new_arena(n as u8, 3);
 
-        let stride = arena.stride as usize;
+        let stride = arena.stride() as usize;
 
         group.bench_with_input(
             BenchmarkId::new("add", n),
@@ -219,7 +193,7 @@ fn bench_sub_scaling(c: &mut Criterion) {
     for n in DIMS {
         let mut arena = CubeArena::new_arena(n as u8, 3);
 
-        let stride = arena.stride as usize;
+        let stride = arena.stride() as usize;
 
         group.bench_with_input(
             BenchmarkId::new("sub", n),
@@ -235,10 +209,6 @@ fn bench_sub_scaling(c: &mut Criterion) {
     group.finish();
 }
 
-
-// ============================================================
-// ALIASING TESTS
-// ============================================================
 
 fn bench_aliasing(c: &mut Criterion) {
     let mut group = c.benchmark_group("aliasing");
@@ -266,10 +236,6 @@ fn bench_aliasing(c: &mut Criterion) {
     group.finish();
 }
 
-
-// ============================================================
-// CACHE LOCALITY
-// ============================================================
 
 fn bench_sequential_vs_random(c: &mut Criterion) {
     let mut group = c.benchmark_group("cache_behavior");
@@ -318,10 +284,6 @@ fn bench_sequential_vs_random(c: &mut Criterion) {
 }
 
 
-// ============================================================
-// SMALL CACHE vs HUGE CACHE
-// ============================================================
-
 fn bench_cache_size(c: &mut Criterion) {
     let mut group = c.benchmark_group("cache_size");
 
@@ -349,9 +311,7 @@ fn bench_cache_size(c: &mut Criterion) {
 }
 
 
-// ============================================================
-// STANDALONE add_24
-// ============================================================
+
 
 fn bench_add24(c: &mut Criterion) {
     let mut group = c.benchmark_group("add24");
@@ -361,23 +321,19 @@ fn bench_add24(c: &mut Criterion) {
 
     group.bench_function("add24_only", |bench| {
         bench.iter(|| {
-            black_box(add_24(a,b));
+            black_box(add_perm::<Piece24>(a,b));
         });
     });
 
     group.bench_function("sub24_only", |bench| {
         bench.iter(|| {
-            black_box(sub_24(a,b));
+            black_box(sub_perm::<Piece24>(a,b));
         });
     });
 
     group.finish();
 }
 
-
-// ============================================================
-// THROUGHPUT TEST
-// ============================================================
 
 fn bench_bulk_throughput(c: &mut Criterion) {
     let mut group = c.benchmark_group("bulk");
@@ -398,9 +354,9 @@ fn bench_bulk_throughput(c: &mut Criterion) {
 }
 
 
-// ============================================================
-// MAIN
-// ============================================================
+
+
+
 
 criterion_group!(
     benches,
