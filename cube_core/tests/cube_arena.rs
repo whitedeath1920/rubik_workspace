@@ -1,4 +1,7 @@
-use cube_core::{CubeArena, arena::{Corner, Edge, Piece24}};
+use cube_core::{
+    CubeArena,
+    arena::{Corner, Edge, Piece24},
+};
 
 #[test]
 fn test_arena_new_identity() {
@@ -74,7 +77,12 @@ fn test_arena_neg_add() {
         arena.neg(0, 1);
         arena.add(0, 1, 2);
         arena.identity(1);
-        assert_eq!(arena.get_cube(2), arena.get_cube(1), "n={}: a+(-a) != id", n);
+        assert_eq!(
+            arena.get_cube(2),
+            arena.get_cube(1),
+            "n={}: a+(-a) != id",
+            n
+        );
     }
 }
 
@@ -286,7 +294,7 @@ fn test_arena_add_sub_slice_cycle() {
 
 #[test]
 fn test_arena_cycle_decomposition() {
-    for n in 2..127 {
+    for n in 2..128 {
         let arena = CubeArena::new_arena(n as u8, 1);
         let cycles = arena.cycle_decomposition_cube(0);
         // Identity has no cycles (all fixed points)
@@ -729,10 +737,7 @@ fn test_orientation_check_fails_bad_sum() {
     for i in 1..8u128 {
         val |= i << (i * 5);
     }
-    assert!(
-        orientation_check::<Corner>(val).is_err(),
-        "should fail"
-    );
+    assert!(orientation_check::<Corner>(val).is_err(), "should fail");
 }
 
 // ── 16. orbit_order ──────────────────────────────────────────────
@@ -745,11 +750,7 @@ fn test_orbit_order_identity() {
     for i in 0..8u128 {
         val |= i << (i * 5);
     }
-    assert_eq!(
-        orbit_order::<Corner>(val),
-        1,
-        "identity order should be 1"
-    );
+    assert_eq!(orbit_order::<Corner>(val), 1, "identity order should be 1");
 }
 
 #[test]
@@ -774,11 +775,7 @@ fn test_orbit_order_4_cycle() {
     for i in 4..8u128 {
         val |= i << (i * 5);
     }
-    assert_eq!(
-        orbit_order::<Corner>(val),
-        4,
-        "4-cycle order should be 4"
-    );
+    assert_eq!(orbit_order::<Corner>(val), 4, "4-cycle order should be 4");
 }
 
 #[test]
@@ -897,7 +894,7 @@ fn test_shuffle_modifies_slice() {
 
 #[test]
 fn test_get_cube_mut_modifies() {
-    for n in 2..127 {
+    for n in 2..128 {
         let mut arena = CubeArena::new_arena(n as u8, 3);
         let original = arena.get_cube(0).to_vec();
         let _stride = arena.stride() as usize;
@@ -916,7 +913,7 @@ fn test_get_cube_mut_modifies() {
 
 #[test]
 fn test_cube_ptr_reads_correctly() {
-    for n in 2..127 {
+    for n in 2..128 {
         let arena = CubeArena::new_arena(n as u8, 2);
         let ptr = arena.cube_ptr(0);
         let slice = arena.get_cube(0);
@@ -930,7 +927,7 @@ fn test_cube_ptr_reads_correctly() {
 
 #[test]
 fn test_cube_mut_ptr_writes() {
-    for n in 2..127 {
+    for n in 2..128 {
         let mut arena = CubeArena::new_arena(n as u8, 3);
         let original = arena.get_cube(0).to_vec();
         let ptr = arena.cube_mut_ptr(2);
@@ -1061,22 +1058,20 @@ fn test_len_returns_correct_value() {
 
 #[test]
 fn test_print_cube_does_not_panic() {
-    for n in 2..127 {
+    for n in 2..128 {
         let arena = CubeArena::new_arena(n as u8, 1);
         arena.print_cube(0); // Should not panic
     }
 }
 
-
 #[test]
 fn test_normalize_cube_does_not_panic() {
-    for n in 2..127 {
+    for n in 2..128 {
         let mut arena = CubeArena::new_arena(n as u8, 2);
         // normalize_cube should not panic on identity
         arena.normalize_cube(0);
     }
 }
-
 
 // ── 30. Comprehensive arena operation for n=2 (minimal) ─────────
 
@@ -1107,4 +1102,233 @@ fn test_arena_n2_all_operations() {
     // Clone
     arena.clone_cube(0, 4);
     assert_eq!(arena.get_cube(0), arena.get_cube(4));
+
+    // Conmutator
+    arena.conmutator(0, 1, 2);
+    assert_eq!(arena.get_cube(0), arena.get_cube(2));
+
+    // Conjugate
+    arena.conjugate(0, 1, 2);
+    assert_eq!(arena.get_cube(0), arena.get_cube(2));
+}
+
+// -- 31. Conjugate identity: a^(-1) * id * a = id -------------------
+
+#[test]
+fn test_conjugate_identity() {
+    let mut rng = &mut rand::rng();
+    for n in 2..128 {
+        let mut arena = random_arena(n as u8, 6, &mut rng);
+        for i in 3..6 {
+            arena.conjugate(i, 0, 1);
+            arena.identity(2);
+            assert_eq!(
+                arena.get_cube(1),
+                arena.get_cube(2),
+                "n={} slot={}: a^(-1)*id*a != id",
+                n,
+                i
+            );
+        }
+    }
+}
+
+// -- 32. Conjugate algebraic: b * c = a * b  where c = b^(-1)*a*b ---
+
+#[test]
+fn test_conjugate_algebraic() {
+    let mut rng = &mut rand::rng();
+    for n in 2..128 {
+        let mut arena = random_arena(n as u8, 9, &mut rng);
+        let (a, b) = (3, 4);
+        // c = b^(-1) * a * b
+        arena.conjugate(b, a, 5);
+        // b * c = a * b  (since b * b^(-1) * a * b = a * b)
+        arena.add(b, 5, 6);
+        arena.add(a, b, 7);
+        assert_eq!(
+            arena.get_cube(6),
+            arena.get_cube(7),
+            "n={}: b * (b^(-1)*a*b) != a * b",
+            n
+        );
+    }
+}
+
+// -- 33. Commutator identity: a * id * a^(-1) * id^(-1) = id --------
+
+#[test]
+fn test_conmutator_identity() {
+    let mut rng = &mut rand::rng();
+    for n in 2..128 {
+        let mut arena = random_arena(n as u8, 6, &mut rng);
+        for i in 3..6 {
+            arena.conmutator(i, 0, 1);
+            arena.identity(2);
+            assert_eq!(
+                arena.get_cube(1),
+                arena.get_cube(2),
+                "n={} slot={}: a*id*a^(-1)*id^(-1) != id",
+                n,
+                i
+            );
+        }
+    }
+}
+
+// -- 34. Commutator algebraic: c * b * a = a * b  where c = [a,b] ---
+
+#[test]
+fn test_conmutator_algebraic() {
+    let mut rng = &mut rand::rng();
+    for n in 2..128 {
+        let mut arena = random_arena(n as u8, 10, &mut rng);
+        let (a, b) = (3, 4);
+        // c = a * b * a^(-1) * b^(-1)
+        arena.conmutator(a, b, 5);
+        // identity: c * b * a = a * b
+        //  c * b * a  =  (a*b*a^(-1)*b^(-1)) * b * a
+        //            =  a*b*a^(-1) * (b^(-1)*b) * a
+        //            =  a*b*a^(-1) * id * a
+        //            =  a*b * (a^(-1)*a)
+        //            =  a*b
+        arena.add(5, b, 6); // c * b
+        arena.add(6, a, 7); // c * b * a
+        arena.add(a, b, 8); // a * b
+        assert_eq!(
+            arena.get_cube(7),
+            arena.get_cube(8),
+            "n={}: [a,b] * b * a != a * b",
+            n
+        );
+    }
+}
+
+// -- 35. Commutator self-inverse: [a,b] * [b,a] = id ---------------
+
+#[test]
+fn test_conmutator_self_inverse() {
+    let mut rng = &mut rand::rng();
+    for n in 2..128 {
+        let mut arena = random_arena(n as u8, 9, &mut rng);
+        let (a, b) = (3, 4);
+        arena.conmutator(a, b, 5); // c = [a,b]
+        arena.conmutator(b, a, 6); // d = [b,a]
+        arena.add(5, 6, 7); // [a,b] * [b,a]
+        arena.identity(8);
+        assert_eq!(
+            arena.get_cube(7),
+            arena.get_cube(8),
+            "n={}: [a,b] * [b,a] != id",
+            n
+        );
+    }
+}
+
+// -- 36. Commutator: manual vs built-in -----------------------------
+
+#[test]
+fn test_conmutator_vs_manual() {
+    let mut rng = &mut rand::rng();
+    for n in 2..128 {
+        let mut arena = random_arena(n as u8, 10, &mut rng);
+        let (a, b) = (3, 4);
+        // built-in: c = a * b * a^(-1) * b^(-1)
+        arena.conmutator(a, b, 5);
+        // manual: same computation step by step
+        arena.neg(a, 6); // -a
+        arena.add(a, b, 7); // a * b
+        arena.add(7, 6, 8); // a * b * a^(-1)
+        arena.neg(b, 6); // -b (reuse slot)
+        arena.add(8, 6, 9); // a * b * a^(-1) * b^(-1)
+        assert_eq!(
+            arena.get_cube(5),
+            arena.get_cube(9),
+            "n={}: conmutator != manual computation",
+            n
+        );
+    }
+}
+
+// -- 37. Commutator of self: [a, a] = id ----------------------------
+
+#[test]
+fn test_conmutator_self() {
+    let mut rng = &mut rand::rng();
+    for n in 2..128 {
+        let mut arena = random_arena(n as u8, 7, &mut rng);
+        for i in 3..6 {
+            arena.conmutator(i, i, 1);
+            arena.identity(2);
+            assert_eq!(
+                arena.get_cube(1),
+                arena.get_cube(2),
+                "n={} slot={}: [a,a] != id",
+                n,
+                i
+            );
+        }
+    }
+}
+
+// -- 38. Debug: manual [a,b] computation with only neg+add -----------
+
+#[test]
+fn test_conmutator_manual_raw() {
+    let mut rng = &mut rand::rng();
+    for n in 2..128 {
+        let mut arena = random_arena(n as u8, 12, &mut rng);
+        let (a, b) = (3, 4);
+
+        // Compute c = a * b * a^(-1) * b^(-1) using only neg + add
+        arena.neg(a, 5); // 5 = -a
+        arena.add(a, b, 6); // 6 = a * b
+        arena.add(6, 5, 7); // 7 = a * b * a^(-1)
+        arena.neg(b, 5); // 5 = -b
+        arena.add(7, 5, 8); // 8 = a * b * a^(-1) * b^(-1) = [a,b]
+
+        // Verify: [a,b] * b * a = a * b
+        arena.add(8, b, 9); // 9 = [a,b] * b
+        arena.add(9, a, 10); // 10 = [a,b] * b * a
+        arena.add(a, b, 11); // 11 = a * b
+
+        assert_eq!(
+            arena.get_cube(10),
+            arena.get_cube(11),
+            "n={}: ([a,b] computed manually) * b * a != a * b",
+            n
+        );
+    }
+}
+
+// -- 39. Debug: check if neg inverts add ------------------------------
+
+#[test]
+fn test_neg_add_cancel() {
+    let mut rng = &mut rand::rng();
+    let mut arena = random_arena(2, 8, &mut rng);
+    let (a, b) = (3, 4);
+
+    // Check: a + (-a) = id
+    arena.neg(a, 5);
+    arena.add(a, 5, 6);
+    arena.identity(7);
+    assert_eq!(arena.get_cube(6), arena.get_cube(7), "a + (-a) != id");
+
+    // Check: a + b + (-b) = a
+    arena.add(a, b, 5);
+    arena.neg(b, 6);
+    arena.add(5, 6, 7);
+    assert_eq!(arena.get_cube(7), arena.get_cube(a), "(a+b) + (-b) != a");
+
+    // Check: a + b + (-a) = ?
+    // (does NOT equal b in general -- that's the commutator)
+    arena.add(a, b, 5);
+    arena.neg(a, 6);
+    arena.add(5, 6, 7);
+    arena.clone_cube(b, 8);
+    // These should NOT be equal (unless a and b commute)
+    // just print them for info
+    println!("a+b+(-a) = {:?}", arena.get_cube(7));
+    println!("b = {:?}", arena.get_cube(8));
 }
