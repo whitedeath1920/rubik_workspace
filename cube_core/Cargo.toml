@@ -7,8 +7,8 @@ edition = "2024"
 criterion = "0.8.1"
 
 [[bench]]
-name = "ben"
+name = "arena"
 harness = false
 
 [dependencies]
-cube_ops = { path = "../cube_ops" }
+rand = "0.10.1"
