@@ -33,7 +33,51 @@ pub const LUT: [[u8; 3]; 1 << 15] = {
     lut
 };
 
-#[repr(C)]
+pub trait PieceKind {
+    const ORI: u128;
+    const PERM: u128;
+    const LEN: usize;
+    const SHIFT: u32;
+    const MOD: u128;
+}
+
+pub struct Corner;
+impl PieceKind for Corner {
+    const ORI: u128 = 3;
+    const PERM: u128 = 7;
+    const LEN: usize = 8;
+    const SHIFT: u32 = 3;
+    const MOD: u128 = 3;
+}
+
+pub struct Edge;
+impl PieceKind for Edge {
+    const ORI: u128 = 1;
+    const PERM: u128 = 15;
+    const LEN: usize = 12;
+    const SHIFT: u32 = 4;
+    const MOD: u128 = 2;
+}
+
+pub struct Center;
+impl PieceKind for Center {
+    const ORI: u128 = 0;
+    const PERM: u128 = 31;
+    const LEN: usize = 6;
+    const SHIFT: u32 = 0;
+    const MOD: u128 = 1; // to avoid any probable division by 0
+}
+
+pub struct Piece24;
+impl PieceKind for Piece24 {
+    const ORI: u128 = 0;
+    const PERM: u128 = 31;
+    const LEN: usize = 24;
+    const SHIFT: u32 = 0;
+    const MOD: u128 = 1; // to avoid any probable division by 0
+}
+
+#[repr(C, align(64))]
 #[derive(Debug, Clone)]
 pub struct CubeArena {
     data: Vec<u128>,
