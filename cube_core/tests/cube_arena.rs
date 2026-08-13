@@ -1306,7 +1306,7 @@ fn test_conmutator_manual_raw() {
 #[test]
 fn test_neg_add_cancel() {
     let mut rng = &mut rand::rng();
-    let mut arena = random_arena(2, 8, &mut rng);
+    let mut arena = random_arena(2, 10, &mut rng);
     let (a, b) = (3, 4);
 
     // Check: a + (-a) = id
@@ -1320,15 +1320,4 @@ fn test_neg_add_cancel() {
     arena.neg(b, 6);
     arena.add(5, 6, 7);
     assert_eq!(arena.get_cube(7), arena.get_cube(a), "(a+b) + (-b) != a");
-
-    // Check: a + b + (-a) = ?
-    // (does NOT equal b in general -- that's the commutator)
-    arena.add(a, b, 5);
-    arena.neg(a, 6);
-    arena.add(5, 6, 7);
-    arena.clone_cube(b, 8);
-    // These should NOT be equal (unless a and b commute)
-    // just print them for info
-    println!("a+b+(-a) = {:?}", arena.get_cube(7));
-    println!("b = {:?}", arena.get_cube(8));
 }
