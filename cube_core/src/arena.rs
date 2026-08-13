@@ -984,15 +984,12 @@ impl CubeArena {
         self.is_solvable_slice(self.get_cube(index))
     }
 
-    pub fn check_cube(&mut self, index: usize) -> Result<()> {
+    pub fn check_cube(&self, index: usize) -> Result<()> {
         debug_assert!(index < self.total_len());
         let cube = self.get_cube(index);
         match self.check_slice(cube) {
             Ok(_) => Ok(()),
-            Err(e) => {
-                self.print_cube(index);
-                Err(e)
-            }
+            Err(e) => Err(e),
         }
     }
     /// Number of u128 words per cube.
@@ -1043,7 +1040,7 @@ impl CubeArena {
     /// Computes c = -b + a + b.
     #[inline]
     pub fn conjugate(&mut self, a: usize, b: usize, c: usize) {
-        debug_assert!(a < self.total_len() || b < self.total_len() || c < self.total_len());
+        debug_assert!(a < self.total_len() && b < self.total_len() && c < self.total_len());
         self.neg(a, c);
         self.add(c, b, c);
         self.add(c, a, c);
@@ -1052,8 +1049,10 @@ impl CubeArena {
     /// Uses a scratch slot to avoid aliasing.
     #[inline]
     pub fn conmutator(&mut self, a: usize, b: usize, c: usize) {
-        debug_assert!(a < self.total_len() || b < self.total_len() || c < self.total_len());
-        let tmp = self.len;
+        debug_assert!(a < self.total_len() && b < self.total_len() && c < self.total_len());
+        // Use the second scratch slot (len+1) to avoid aliasing conflict
+        // with `add`, which internally uses `self.len` for aliasing protection.
+        let tmp = self.aux_mul();
 
         self.clone_cube(a, tmp);
         self.add(tmp, b, tmp);
